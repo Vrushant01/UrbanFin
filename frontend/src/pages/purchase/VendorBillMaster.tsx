@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
+import { MasterKanbanView } from '../../components/master/MasterKanbanView';
 import { MasterFormView } from '../../components/master/MasterFormView';
 import { 
   type VendorBill, VendorBillStatus, type VendorBillLine, 
@@ -9,9 +10,13 @@ import {
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Plus, Trash2, ArrowRight, Printer, CheckCircle } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { BillPaymentModal } from '../../components/purchase/BillPaymentModal';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
+import { calculateGST } from '../../utils/gstUtils';
 
 const DEFAULT_BILL: Partial<VendorBill> = {
   vendorId: '',
@@ -29,6 +34,7 @@ export function VendorBillMaster() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [bills, setBills] = useState<VendorBill[]>([]);
   const [pos, setPos] = useState<PurchaseOrder[]>([]);
@@ -41,53 +47,53 @@ export function VendorBillMaster() {
   
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // Load data
-  useEffect(() => {
-    setBills(mockDb.getVendorBills());
-    setPos(mockDb.getPurchaseOrders());
-    setVendors(mockDb.getContacts());
-    setProducts(mockDb.getProducts());
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const bData = await fetchWithCache<VendorBill[]>(`/api/vendor-bills?search=${encodeURIComponent(query)}`);
+      setBills(bData);
+    } catch {
+      setBills(mockDb.getVendorBills());
+    }
+
+    try {
+      const pData = await fetchWithCache<PurchaseOrder[]>('/api/purchase-orders');
+      setPos(pData);
+    } catch {
+      setPos(mockDb.getPurchaseOrders());
+    }
+
+    try {
+      const vData = await fetchWithCache<Contact[]>('/api/contacts?type=Vendor');
+      setVendors(vData);
+    } catch {
+      setVendors(mockDb.getContacts());
+    }
+
+    try {
+      const prData = await fetchWithCache<Product[]>('/api/products');
+      setProducts(prData);
+    } catch {
+      setProducts(mockDb.getProducts());
+    }
+
     setAnalytics(mockDb.getAnalyticAccounts());
     setAccounts(mockDb.getAccounts());
-  }, [viewMode]);
+  }, [debouncedSearch]);
 
-  // Handle initialization from PO
+  // Load data
   useEffect(() => {
-    const fromPoId = searchParams.get('fromPo');
-    if (fromPoId && pos.length > 0) {
-      const po = pos.find(p => p.id === fromPoId);
-      if (po) {
-        const purchaseAcc = accounts.find(a => a.type === AccountType.Expenses);
-        
-        const newBill: Partial<VendorBill> = {
-          ...DEFAULT_BILL,
-          vendorId: po.vendorId,
-          poReferenceId: po.id,
-          lines: po.lines.map(pl => ({
-            id: Math.random().toString(36).substr(2, 9),
-            productId: pl.productId,
-            accountId: purchaseAcc ? purchaseAcc.id : '',
-            analyticAccountId: pl.analyticAccountId,
-            qty: pl.qty,
-            unitPrice: pl.unitPrice
-          }))
-        };
-        setEditingBill(newBill);
-        setViewMode('form');
-        setSearchParams({}); // Clear
-      }
-    }
-  }, [searchParams, pos, accounts, setSearchParams]);
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
 
-  const filteredBills = useMemo(() => {
-    if (!searchTerm) return bills;
-    const lower = searchTerm.toLowerCase();
-    return bills.filter(b => 
-      b.number?.toLowerCase().includes(lower) || 
-      b.billReference?.toLowerCase().includes(lower) ||
-      b.status.toLowerCase().includes(lower)
-    );
-  }, [bills, searchTerm]);
+  const filteredBills = bills;
 
   // Actions
   const handleNew = () => {
@@ -186,44 +192,55 @@ export function VendorBillMaster() {
     });
   };
 
-  // Computations
-  let totalBillAmount = (editingBill?.lines || []).reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
-  let amountDue = totalBillAmount - (editingBill?.amountPaid || 0);
+  // Computations with GST
+  const subtotalUntaxed = (editingBill?.lines || []).reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
+  const gstBreakdown = calculateGST(subtotalUntaxed);
+  const totalBillAmount = gstBreakdown.totalWithGst;
+  const totalPaidAmount = (editingBill?.cashPaid || 0) + (editingBill?.bankPaid || 0) || (editingBill?.amountPaid || 0);
+  const amountDue = Math.max(0, totalBillAmount - totalPaidAmount);
 
   // List View configuration
   const columns: Column<VendorBill>[] = [
-    { key: 'number', header: 'Bill No.' },
+    { key: 'number', header: 'BILL NO.' },
     { 
       key: 'vendorId', 
-      header: 'Vendor',
+      header: 'VENDOR',
       render: (b) => {
         const vendor = vendors.find(v => v.id === b.vendorId);
-        return vendor ? vendor.name : 'Unknown';
+        return <span className="font-medium text-slate-800">{(b as any).vendorName || (vendor ? vendor.name : 'Vendor')}</span>;
       }
     },
-    { key: 'billDate', header: 'Bill Date' },
-    { key: 'dueDate', header: 'Due Date' },
+    { key: 'billDate', header: 'BILL DATE' },
+    { key: 'dueDate', header: 'DUE DATE' },
     { 
       key: 'total', 
-      header: 'Total',
+      header: 'TOTAL (INCL. GST)',
       render: (b) => {
-        const total = b.lines.reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
-        return <span className="font-semibold">Rs. {total.toLocaleString()}</span>;
+        const rawTotal = b.lines.reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
+        const { totalWithGst } = calculateGST(rawTotal);
+        return (
+          <div>
+            <div className="font-bold text-slate-900">Rs. {totalWithGst.toLocaleString()}</div>
+            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+              18% GST
+            </span>
+          </div>
+        );
       }
     },
     { 
       key: 'status', 
-      header: 'Status',
+      header: 'STATUS',
       render: (b) => {
-        const colors = {
-          [VendorBillStatus.Draft]: 'bg-slate-100 text-slate-700',
-          [VendorBillStatus.Confirmed]: 'bg-blue-50 text-blue-700',
-          [VendorBillStatus.PartiallyPaid]: 'bg-amber-50 text-amber-700',
-          [VendorBillStatus.Paid]: 'bg-emerald-50 text-emerald-700',
-          [VendorBillStatus.Cancelled]: 'bg-rose-50 text-rose-700',
+        const colors: Record<string, string> = {
+          [VendorBillStatus.Draft]: 'bg-slate-100 text-slate-700 border-slate-200',
+          [VendorBillStatus.Confirmed]: 'bg-blue-50 text-blue-700 border-blue-200/80',
+          [VendorBillStatus.PartiallyPaid]: 'bg-amber-50 text-amber-700 border-amber-200/80',
+          [VendorBillStatus.Paid]: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+          [VendorBillStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200/80',
         };
         return (
-          <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${colors[b.status]}`}>
+          <span className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-md border ${colors[b.status] || 'bg-slate-100 text-slate-700'}`}>
             {b.status}
           </span>
         );
@@ -296,6 +313,71 @@ export function VendorBillMaster() {
           keyExtractor={b => b.id} 
         />
       )}
+
+      {viewMode === 'kanban' && (
+        <MasterKanbanView
+          data={filteredBills}
+          keyExtractor={bill => bill.id}
+          onCardClick={handleEdit}
+          renderCard={(bill) => {
+            const vend = vendors.find(v => v.id === bill.vendorId);
+            const subtotal = bill.lines.reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
+            const gstInfo = calculateGST(subtotal);
+            const totalWithGst = gstInfo.totalWithGst;
+            const due = totalWithGst - (bill.amountPaid || 0);
+
+            return (
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                      {bill.number || 'Draft'}
+                    </span>
+                    <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${
+                      bill.status === VendorBillStatus.Paid
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : bill.status === VendorBillStatus.PartiallyPaid
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : bill.status === VendorBillStatus.Confirmed
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
+                      {bill.status}
+                    </span>
+                  </div>
+
+                  <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors text-base truncate">
+                    {(bill as any).vendorName || vend?.name || 'Vendor'}
+                  </div>
+                  {((bill as any).vendorEmail || vend?.email) && (
+                    <div className="text-xs text-slate-400 truncate mt-0.5">{(bill as any).vendorEmail || vend?.email}</div>
+                  )}
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>Due: {bill.dueDate}</span>
+                    <span>{bill.billDate}</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs font-medium text-slate-400">Total (Incl. GST)</span>
+                    <span className="font-bold text-sm text-slate-900">
+                      Rs. {totalWithGst.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  {due > 0 && (
+                    <div className="flex items-baseline justify-between text-xs font-semibold text-red-600">
+                      <span>Due</span>
+                      <span>Rs. {due.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }}
+        />
+      )}
       
       {viewMode === 'form' && editingBill && (
         <MasterFormView renderActions={renderFormActions}>
@@ -333,19 +415,20 @@ export function VendorBillMaster() {
             {/* Header Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                <SearchableSelect
+                  label="Vendor Name"
+                  required
+                  placeholder="Search vendor by name or email..."
                   value={editingBill.vendorId || ''}
                   disabled={isReadonly}
-                  onChange={e => setEditingBill({ ...editingBill, vendorId: e.target.value })}
-                  required
-                >
-                  <option value="" disabled>Select Vendor</option>
-                  {vendors.map(v => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
+                  asyncSearchUrl="/api/contacts?type=Vendor"
+                  options={vendors.map(v => ({
+                    id: v.id,
+                    name: v.name,
+                    subtitle: v.email || v.phone,
+                  }))}
+                  onChange={(val) => setEditingBill({ ...editingBill, vendorId: val })}
+                />
               </div>
 
               <div>
@@ -386,7 +469,7 @@ export function VendorBillMaster() {
             {/* Line Items */}
             <div className="mt-8">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Invoice Lines</h3>
-              <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white">
+              <div className="border border-slate-200 rounded-xl overflow-visible bg-white">
                 <table className="w-full text-left text-sm min-w-max">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
                     <tr>
@@ -415,37 +498,56 @@ export function VendorBillMaster() {
                       return (
                         <tr key={line.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                           <td className="p-2 text-center text-slate-400">{idx + 1}</td>
-                          <td className="p-2">
-                            <select 
-                              className="w-full min-w-[150px] h-8 px-2 border border-slate-300 rounded text-sm disabled:bg-transparent disabled:border-transparent font-medium"
+                          <td className="p-2 min-w-[200px]">
+                            <SearchableSelect
+                              size="sm"
+                              placeholder="Search product..."
                               value={line.productId}
                               disabled={isReadonly}
-                              onChange={e => updateLine(line.id, 'productId', e.target.value)}
-                            >
-                              <option value="" disabled>Select Product...</option>
-                              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                              asyncSearchUrl="/api/products"
+                              options={products.map(p => ({
+                                id: p.id,
+                                name: p.name,
+                                subtitle: p.categoryName || p.type,
+                                price: p.cost || p.salesPrice,
+                              }))}
+                              onChange={(val, opt) => {
+                                updateLine(line.id, 'productId', val);
+                                if (opt?.price !== undefined) {
+                                  updateLine(line.id, 'unitPrice', opt.price);
+                                }
+                              }}
+                            />
                           </td>
-                          <td className="p-2">
-                            <select 
-                              className="w-full min-w-[150px] h-8 px-2 border border-slate-300 rounded text-sm disabled:bg-transparent disabled:border-transparent"
+                          <td className="p-2 min-w-[170px]">
+                            <SearchableSelect
+                              size="sm"
+                              placeholder="Select Account"
                               value={line.accountId}
                               disabled={isReadonly}
-                              onChange={e => updateLine(line.id, 'accountId', e.target.value)}
-                            >
-                              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </select>
+                              asyncSearchUrl="/api/accounts"
+                              options={accounts.map(a => ({
+                                id: a.id,
+                                name: a.name,
+                                subtitle: a.type,
+                              }))}
+                              onChange={(val) => updateLine(line.id, 'accountId', val)}
+                            />
                           </td>
-                          <td className="p-2">
-                            <select 
-                              className="w-full min-w-[120px] h-8 px-2 border border-slate-300 rounded text-sm disabled:bg-transparent disabled:border-transparent font-medium text-indigo-700"
+                          <td className="p-2 min-w-[150px]">
+                            <SearchableSelect
+                              size="sm"
+                              placeholder="(None)"
                               value={line.analyticAccountId || ''}
                               disabled={isReadonly}
-                              onChange={e => updateLine(line.id, 'analyticAccountId', e.target.value)}
-                            >
-                              <option value="">(None)</option>
-                              {analytics.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </select>
+                              asyncSearchUrl="/api/analytics"
+                              options={analytics.map(a => ({
+                                id: a.id,
+                                name: a.name,
+                                subtitle: a.type,
+                              }))}
+                              onChange={(val) => updateLine(line.id, 'analyticAccountId', val)}
+                            />
                           </td>
                           <td className="p-2">
                             <input 
@@ -499,31 +601,44 @@ export function VendorBillMaster() {
               )}
             </div>
 
-            {/* Totals Block */}
+            {/* Totals Block with GST Breakdown */}
             <div className="flex justify-end pt-4">
-              <div className="w-full max-w-sm bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
-                <div className="p-4 space-y-3">
+              <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                <div className="p-4 space-y-2.5 text-sm">
                   <div className="flex justify-between text-slate-600">
-                    <span>Untaxed Amount</span>
-                    <span className="font-semibold">Rs. {totalBillAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    <span>Untaxed Subtotal</span>
+                    <span className="font-semibold text-slate-800">Rs. {subtotalUntaxed.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-600 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg border border-indigo-100/60">
+                    <span className="text-indigo-950 font-medium">Input Central GST (CGST 9%)</span>
+                    <span className="font-bold text-indigo-900">+ Rs. {gstBreakdown.cgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-600 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg border border-indigo-100/60">
+                    <span className="text-indigo-950 font-medium">Input State GST (SGST 9%)</span>
+                    <span className="font-bold text-indigo-900">+ Rs. {gstBreakdown.sgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-base">
+                    <span className="font-bold text-slate-800">Total Bill (Incl. 18% GST)</span>
+                    <span className="font-black text-slate-900">
+                      Rs. {totalBillAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    </span>
                   </div>
                   
-                  {(editingBill.amountPaid || 0) > 0 && (
+                  {totalPaidAmount > 0 && (
                     <>
-                      <div className="flex justify-between text-emerald-600">
-                        <span>Paid (Cash)</span>
-                        <span>- Rs. {(editingBill.cashPaid || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                      </div>
-                      <div className="flex justify-between text-emerald-600">
-                        <span>Paid (Bank)</span>
-                        <span>- Rs. {(editingBill.bankPaid || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                      <div className="flex justify-between text-emerald-600 pt-1 border-t border-dashed border-slate-200">
+                        <span>Paid Amount (Cash + Bank)</span>
+                        <span>- Rs. {totalPaidAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </div>
                     </>
                   )}
                   
-                  <div className="pt-3 border-t border-slate-200 flex justify-between items-center text-lg">
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-lg">
                     <span className="font-bold text-slate-800">Amount Due</span>
-                    <span className={`font-bold ${amountDue <= 0 ? 'text-emerald-600' : 'text-indigo-700'}`}>
+                    <span className={`font-black ${amountDue <= 0 ? 'text-emerald-600' : 'text-indigo-700'}`}>
                       Rs. {amountDue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </span>
                   </div>

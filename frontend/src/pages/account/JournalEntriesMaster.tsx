@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
+import { MasterKanbanView } from '../../components/master/MasterKanbanView';
 import { MasterFormView } from '../../components/master/MasterFormView';
 import { 
   type JournalEntry, type JournalEntryLine, JournalEntryStatus, 
@@ -9,7 +10,10 @@ import {
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { FileText, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
 const DEFAULT_ENTRY: Partial<JournalEntry> = {
   date: new Date().toISOString().split('T')[0],
@@ -22,6 +26,7 @@ const DEFAULT_ENTRY: Partial<JournalEntry> = {
 export function JournalEntriesMaster() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
@@ -30,23 +35,50 @@ export function JournalEntriesMaster() {
   
   const [editingEntry, setEditingEntry] = useState<Partial<JournalEntry> | null>(null);
 
-  // Load data
-  useEffect(() => {
-    setEntries(mockDb.getJournalEntries());
-    setJournals(mockDb.getJournals());
-    setAccounts(mockDb.getAccounts());
-    setContacts(mockDb.getContacts());
-  }, [viewMode]);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
-  const filteredEntries = useMemo(() => {
-    if (!searchTerm) return entries;
-    const lower = searchTerm.toLowerCase();
-    return entries.filter(e => 
-      e.number.toLowerCase().includes(lower) || 
-      (journals.find(j => j.id === e.journalId)?.name || '').toLowerCase().includes(lower) ||
-      (contacts.find(c => c.id === e.partnerId)?.name || '').toLowerCase().includes(lower)
-    );
-  }, [entries, journals, contacts, searchTerm]);
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const jeData = await fetchWithCache<JournalEntry[]>(`/api/journal-entries?search=${encodeURIComponent(query)}`);
+      setEntries(jeData);
+    } catch {
+      setEntries(mockDb.getJournalEntries());
+    }
+
+    try {
+      const jData = await fetchWithCache<Journal[]>('/api/journals');
+      setJournals(jData);
+    } catch {
+      setJournals(mockDb.getJournals());
+    }
+
+    try {
+      const aData = await fetchWithCache<Account[]>('/api/accounts');
+      setAccounts(aData);
+    } catch {
+      setAccounts(mockDb.getAccounts());
+    }
+
+    try {
+      const cData = await fetchWithCache<Contact[]>('/api/contacts');
+      setContacts(cData);
+    } catch {
+      setContacts(mockDb.getContacts());
+    }
+  }, [debouncedSearch]);
+
+  // Load data & live backend sync
+  useEffect(() => {
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
+
+  const filteredEntries = entries;
 
   // Derived state for line items
   const totalDebit = useMemo(() => {
@@ -75,7 +107,7 @@ export function JournalEntriesMaster() {
     setViewMode('list');
   };
 
-  const handleSave = (status: JournalEntryStatus = JournalEntryStatus.Draft) => {
+  const handleSave = async (status: JournalEntryStatus = JournalEntryStatus.Draft) => {
     if (!editingEntry || !editingEntry.journalId || !editingEntry.date) return;
 
     const payload = {
@@ -90,9 +122,21 @@ export function JournalEntriesMaster() {
       mockDb.addJournalEntry(payload as Omit<JournalEntry, 'id'>);
     }
     
-    setEntries(mockDb.getJournalEntries());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingEntry(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editingEntry?.id) return;
+    if (window.confirm(`Are you sure you want to delete entry "${editingEntry.number || 'Draft'}"?`)) {
+      mockDb.deleteJournalEntry(editingEntry.id);
+      await mockDb.syncWithBackend();
+      loadData();
+      setViewMode('list');
+      setEditingEntry(null);
+    }
   };
 
   // Line item manipulation
@@ -140,10 +184,11 @@ export function JournalEntriesMaster() {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!editingEntry || !editingEntry.id) return;
     mockDb.updateJournalEntry(editingEntry.id, { status: JournalEntryStatus.Draft });
-    setEntries(mockDb.getJournalEntries());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingEntry(null);
   };
@@ -176,21 +221,24 @@ export function JournalEntriesMaster() {
     
     if (editingEntry.status === JournalEntryStatus.Posted) {
       return (
-        <>
+        <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset to Draft
           </Button>
-          {editingEntry.number?.startsWith('Bill') || editingEntry.number?.startsWith('Inv') ? (
-            <Button type="button" variant="primary" onClick={() => alert('Pay action - wiring in Module 5/6')}>
-              Register Payment
-            </Button>
-          ) : null}
-        </>
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleDelete}
+            className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+          >
+            <Trash2 size={16} /> Delete
+          </Button>
+        </div>
       );
     }
 
     return (
-      <>
+      <div className="flex items-center gap-2">
         <Button 
           type="button" 
           variant="secondary" 
@@ -201,14 +249,25 @@ export function JournalEntriesMaster() {
         <Button 
           type="button" 
           variant="primary"
-          disabled={!isBalanced || editingEntry.lines?.length === 0}
+          disabled={!isBalanced || (editingEntry.lines?.length || 0) === 0}
           onClick={handlePost}
         >
           Post
         </Button>
-      </>
+        {editingEntry.id && (
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleDelete}
+            className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+          >
+            <Trash2 size={16} /> Delete
+          </Button>
+        )}
+      </div>
     );
   };
+
 
   const isReadonly = editingEntry?.status === JournalEntryStatus.Posted;
 
@@ -232,11 +291,57 @@ export function JournalEntriesMaster() {
       )}
 
       {viewMode === 'kanban' && (
-        <div className="flex flex-col items-center justify-center h-64 text-slate-500">
-          <FileText size={48} className="mb-4 text-slate-300" />
-          <p>Kanban view is not available for Journal Entries.</p>
-          <button onClick={() => setViewMode('list')} className="mt-4 text-indigo-600 hover:underline">Switch to List View</button>
-        </div>
+        <MasterKanbanView
+          data={filteredEntries}
+          keyExtractor={entry => entry.id}
+          onCardClick={handleEdit}
+          renderCard={(entry) => {
+            const contact = contacts.find(c => c.id === entry.partnerId);
+            const journal = journals.find(j => j.id === entry.journalId);
+            return (
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                      {entry.number || 'New'}
+                    </span>
+                    <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${
+                      entry.status === JournalEntryStatus.Posted
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
+                      {entry.status}
+                    </span>
+                  </div>
+
+                  <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors text-base truncate">
+                    {journal?.name || 'Journal Entry'}
+                  </div>
+                  
+                  <div className="mt-2 space-y-1">
+                    <div className="text-sm text-slate-600 flex items-center justify-between">
+                      <span className="text-slate-400">Date:</span>
+                      <span className="font-medium text-slate-700">{entry.date}</span>
+                    </div>
+                    {contact && (
+                      <div className="text-sm text-slate-600 flex items-center justify-between">
+                        <span className="text-slate-400">Partner:</span>
+                        <span className="font-medium text-slate-700 truncate max-w-[120px]">{contact.name}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total</span>
+                  <span className="font-black text-lg text-slate-800">
+                    Rs. {entry.total.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            );
+          }}
+        />
       )}
 
       {viewMode === 'form' && editingEntry && (
@@ -284,23 +389,24 @@ export function JournalEntriesMaster() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Partner (Optional)</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                <SearchableSelect
+                  label="Partner (Optional)"
+                  placeholder="Select or search partner..."
                   value={editingEntry.partnerId || ''}
                   disabled={isReadonly}
-                  onChange={e => setEditingEntry({ ...editingEntry, partnerId: e.target.value })}
-                >
-                  <option value="">None</option>
-                  {contacts.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  asyncSearchUrl="/api/contacts"
+                  options={contacts.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    subtitle: c.email || c.phone,
+                  }))}
+                  onChange={(val) => setEditingEntry({ ...editingEntry, partnerId: val })}
+                />
               </div>
             </div>
 
             {/* Line Items */}
-            <div className="mt-8 border border-slate-200 rounded-xl overflow-hidden bg-white">
+            <div className="mt-8 border border-slate-200 rounded-xl overflow-visible bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
                   <tr>
@@ -314,27 +420,35 @@ export function JournalEntriesMaster() {
                 <tbody>
                   {(editingEntry.lines || []).map((line, idx) => (
                     <tr key={line.id} className="border-b border-slate-100 last:border-0">
-                      <td className="p-2">
-                        <select 
-                          className="w-full h-8 px-2 border border-slate-300 rounded text-sm disabled:bg-transparent disabled:border-transparent"
+                      <td className="p-2 min-w-[200px]">
+                        <SearchableSelect
+                          size="sm"
+                          placeholder="Select Account..."
                           value={line.accountId}
                           disabled={isReadonly}
-                          onChange={e => updateLine(line.id, 'accountId', e.target.value)}
-                        >
-                          <option value="" disabled>Select...</option>
-                          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                        </select>
+                          asyncSearchUrl="/api/accounts"
+                          options={accounts.map(a => ({
+                            id: a.id,
+                            name: a.name,
+                            subtitle: a.type,
+                          }))}
+                          onChange={(val) => updateLine(line.id, 'accountId', val)}
+                        />
                       </td>
-                      <td className="p-2">
-                        <select 
-                          className="w-full h-8 px-2 border border-slate-300 rounded text-sm disabled:bg-transparent disabled:border-transparent"
+                      <td className="p-2 min-w-[180px]">
+                        <SearchableSelect
+                          size="sm"
+                          placeholder="(Optional)"
                           value={line.partnerId || ''}
                           disabled={isReadonly}
-                          onChange={e => updateLine(line.id, 'partnerId', e.target.value)}
-                        >
-                          <option value="">None</option>
-                          {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                          asyncSearchUrl="/api/contacts"
+                          options={contacts.map(c => ({
+                            id: c.id,
+                            name: c.name,
+                            subtitle: c.email || c.phone,
+                          }))}
+                          onChange={(val) => updateLine(line.id, 'partnerId', val)}
+                        />
                       </td>
                       <td className="p-2">
                         <input 

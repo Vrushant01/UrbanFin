@@ -91,3 +91,20 @@ export const updateJournal = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const deleteJournal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const journal = await Journal.findByIdAndDelete(id);
+    if (!journal) {
+      res.status(404).json({ message: 'Journal not found' });
+      return;
+    }
+
+    cache.invalidate('journals:');
+    res.status(200).json({ success: true, message: 'Journal deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+

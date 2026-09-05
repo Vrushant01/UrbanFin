@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PurchaseOrder, IPurchaseOrder } from '../models/PurchaseOrder.js';
 import { VendorBill } from '../models/VendorBill.js';
 import { Account } from '../models/Account.js';
+import { Contact } from '../models/Contact.js';
 import { PurchaseOrderStatus, AccountType, VendorBillStatus } from '../types/index.js';
 import { getNextPONumber, getNextBillNumber } from '../services/sequenceService.js';
 import { cache } from '../utils/cache.js';
@@ -9,7 +10,9 @@ import { cache } from '../utils/cache.js';
 export const getPurchaseOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { search, status } = req.query;
-    const cacheKey = `purchase_orders:list:${search || ''}:${status || ''}`;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const limit = hasSearch ? 500 : (Number(req.query.limit) || 120);
+    const cacheKey = `purchase_orders:list:${search || ''}:${status || ''}:${limit}`;
 
     const cached = cache.get<any[]>(cacheKey);
     if (cached) {
@@ -19,15 +22,34 @@ export const getPurchaseOrders = async (req: Request, res: Response, next: NextF
 
     const filter: any = {};
     if (status) filter.status = status;
-    if (search && typeof search === 'string' && search.trim()) {
+    if (hasSearch) {
+      const term = (search as string).trim();
+      const matchingVendors = await Contact.find({
+        name: { $regex: term, $options: 'i' },
+      });
+      const vendorIds = matchingVendors.map((v) => v._id.toString());
+
       filter.$or = [
-        { number: { $regex: search.trim(), $options: 'i' } },
-        { paymentTerms: { $regex: search.trim(), $options: 'i' } },
+        { number: { $regex: term, $options: 'i' } },
+        { paymentTerms: { $regex: term, $options: 'i' } },
+        { status: { $regex: term, $options: 'i' } },
+        { vendorId: { $in: vendorIds } },
       ];
     }
 
-    const pos = await PurchaseOrder.find(filter).sort({ createdAt: -1 });
-    const formatted = pos.map((p) => p.toJSON());
+    const pos = await PurchaseOrder.find(filter).sort({ createdAt: -1 }).limit(limit);
+    const vendorIds = Array.from(new Set(pos.map((p) => p.vendorId).filter(Boolean)));
+    const contacts = vendorIds.length > 0 ? await Contact.find({ _id: { $in: vendorIds } }).lean() : [];
+    const contactMap = new Map(contacts.map((c) => [c._id.toString(), c]));
+
+    const formatted = pos.map((p) => {
+      const json: any = p.toJSON();
+      const vend = contactMap.get(p.vendorId);
+      json.vendorName = vend?.name || 'Vendor';
+      json.vendorEmail = vend?.email || '';
+      json.vendorPhone = vend?.phone || '';
+      return json;
+    });
 
     cache.set(cacheKey, formatted, 30);
     res.status(200).json(formatted);
@@ -44,7 +66,16 @@ export const getPurchaseOrderById = async (req: Request, res: Response, next: Ne
       res.status(404).json({ message: 'Purchase Order not found' });
       return;
     }
-    res.status(200).json(po.toJSON());
+    const json: any = po.toJSON();
+    if (po.vendorId) {
+      const vend = await Contact.findById(po.vendorId).lean();
+      if (vend) {
+        json.vendorName = vend.name;
+        json.vendorEmail = vend.email;
+        json.vendorPhone = vend.phone;
+      }
+    }
+    res.status(200).json(json);
   } catch (error) {
     next(error);
   }

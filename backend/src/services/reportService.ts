@@ -49,13 +49,16 @@ export const computeAccountBalanceForYear = async (
   const entries = await JournalEntry.find({
     status: JournalEntryStatus.Posted,
     date: { $regex: `^${year}` },
-    'lines.accountId': accountId,
+    $or: [
+      { 'lines.accountId': accountId },
+      { 'lines.accountId': account.name }
+    ]
   });
 
   let balance = 0;
   entries.forEach((entry) => {
     (entry.lines || []).forEach((line) => {
-      if (line.accountId === accountId) {
+      if (line.accountId === accountId || line.accountId === account.name) {
         // Asset, Expenses, OtherExpenses, Bank, Cash = Debit - Credit
         if (
           [

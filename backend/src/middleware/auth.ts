@@ -46,7 +46,17 @@ export const requireRole = (allowedRoles: Role[]) => {
       return;
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    // MasterAdmin has top-level superuser privileges across admin routes
+    const effectiveRoles = [...allowedRoles];
+    if (
+      allowedRoles.includes(Role.Administrator) ||
+      allowedRoles.includes(Role.SubAdmin) ||
+      allowedRoles.includes(Role.Accountant)
+    ) {
+      effectiveRoles.push(Role.MasterAdmin);
+    }
+
+    if (!effectiveRoles.includes(req.user.role)) {
       res.status(403).json({
         message: `Access denied. Role "${req.user.role}" does not have permission for this resource.`,
       });

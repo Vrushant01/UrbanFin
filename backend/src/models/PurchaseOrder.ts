@@ -66,8 +66,11 @@ const purchaseOrderSchema = new Schema<IPurchaseOrder>(
   }
 );
 
-purchaseOrderSchema.index({ vendorId: 1 });
+purchaseOrderSchema.index({ vendorId: 1, date: -1 });
+purchaseOrderSchema.index({ status: 1, date: -1 });
+purchaseOrderSchema.index({ createdAt: -1 });
 
 export const PurchaseOrder: Model<IPurchaseOrder> =
   mongoose.models.PurchaseOrder ||
   mongoose.model<IPurchaseOrder>('PurchaseOrder', purchaseOrderSchema);
+

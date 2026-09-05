@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { JournalEntry, IJournalEntry } from '../models/JournalEntry.js';
+import { Journal } from '../models/Journal.js';
+import { Contact } from '../models/Contact.js';
 import { JournalEntryStatus } from '../types/index.js';
 import {
   createJournalEntry,
@@ -11,7 +13,9 @@ import { cache } from '../utils/cache.js';
 export const getJournalEntries = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { search, journalId, status } = req.query;
-    const cacheKey = `journal_entries:list:${search || ''}:${journalId || ''}:${status || ''}`;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const limit = hasSearch ? 500 : (Number(req.query.limit) || 120);
+    const cacheKey = `journal_entries:list:${search || ''}:${journalId || ''}:${status || ''}:${limit}`;
 
     const cached = cache.get<any[]>(cacheKey);
     if (cached) {
@@ -23,14 +27,23 @@ export const getJournalEntries = async (req: Request, res: Response, next: NextF
     if (journalId) filter.journalId = journalId;
     if (status) filter.status = status;
 
-    if (search && typeof search === 'string' && search.trim()) {
+    if (hasSearch) {
+      const term = (search as string).trim();
+      const matchingJournals = await Journal.find({ name: { $regex: term, $options: 'i' } });
+      const jIds = matchingJournals.map(j => j._id.toString());
+      const matchingPartners = await Contact.find({ name: { $regex: term, $options: 'i' } });
+      const pIds = matchingPartners.map(p => p._id.toString());
+
       filter.$or = [
-        { number: { $regex: search.trim(), $options: 'i' } },
-        { date: { $regex: search.trim(), $options: 'i' } },
+        { number: { $regex: term, $options: 'i' } },
+        { date: { $regex: term, $options: 'i' } },
+        { status: { $regex: term, $options: 'i' } },
+        { journalId: { $in: jIds } },
+        { partnerId: { $in: pIds } },
       ];
     }
 
-    const entries = await JournalEntry.find(filter).sort({ date: -1, createdAt: -1 });
+    const entries = await JournalEntry.find(filter).sort({ date: -1, createdAt: -1 }).limit(limit);
     const formatted = entries.map((e) => e.toJSON());
 
     cache.set(cacheKey, formatted, 30);
@@ -180,3 +193,23 @@ export const resetJournalEntryToDraftHandler = async (req: Request, res: Respons
     next(error);
   }
 };
+
+export const deleteJournalEntryHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const entry = await JournalEntry.findByIdAndDelete(id);
+    if (!entry) {
+      res.status(404).json({ message: 'Journal entry not found' });
+      return;
+    }
+
+    cache.invalidate('journal_entries:');
+    cache.invalidate('reports:');
+    cache.invalidate('dashboard:');
+
+    res.status(200).json({ success: true, message: 'Journal entry deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+

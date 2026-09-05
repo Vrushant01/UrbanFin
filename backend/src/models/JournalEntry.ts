@@ -11,7 +11,7 @@ export interface IJournalEntry extends Document {
   lines: JournalEntryLine[];
   total: number;
   sourceDocument?: {
-    model: 'VendorBill' | 'CustomerInvoice';
+    model: 'VendorBill' | 'CustomerInvoice' | 'Payment';
     id: string;
   };
 }
@@ -79,9 +79,12 @@ const journalEntrySchema = new Schema<IJournalEntry>(
   }
 );
 
-journalEntrySchema.index({ date: 1 });
-journalEntrySchema.index({ status: 1 });
+journalEntrySchema.index({ journalId: 1, date: -1 });
+journalEntrySchema.index({ partnerId: 1, date: -1 });
+journalEntrySchema.index({ status: 1, date: -1 });
+journalEntrySchema.index({ createdAt: -1 });
 
 export const JournalEntry: Model<IJournalEntry> =
   mongoose.models.JournalEntry ||
   mongoose.model<IJournalEntry>('JournalEntry', journalEntrySchema);
+

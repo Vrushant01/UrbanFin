@@ -1,61 +1,128 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { AccountType, type Account } from '../../types';
-import { mockDb } from '../../mock/db';
+import { mockDb, apiCall } from '../../mock/db';
 import { Button } from '../../components/ui/Button';
 import { Printer, CheckCircle, AlertTriangle } from 'lucide-react';
 
+interface AccountReportItem {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+}
+
+interface BalanceSheetReportData {
+  year: string;
+  bankAccounts: AccountReportItem[];
+  cashAccounts: AccountReportItem[];
+  otherAssetAccounts: AccountReportItem[];
+  capitalAccounts: AccountReportItem[];
+  liabilityAccounts: AccountReportItem[];
+  totalBank: number;
+  totalCash: number;
+  totalOtherAssets: number;
+  totalAssets: number;
+  totalCapital: number;
+  totalLiabilities: number;
+  netIncome: number;
+  totalLiabilitiesAndEquity: number;
+  isBalanced: boolean;
+}
+
 export function BalanceSheet() {
   const [year, setYear] = useState('2026');
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [balances, setBalances] = useState<Record<string, number>>({});
-  const [netIncome, setNetIncome] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState<BalanceSheetReportData | null>(null);
 
-  useEffect(() => {
+  const loadReport = useCallback(async () => {
+    setLoading(true);
+    try {
+      await mockDb.syncWithBackend();
+
+      // Fetch computed report from backend API
+      const backendData = await apiCall<BalanceSheetReportData>('GET', `/reports/balance-sheet?year=${year}`);
+      if (backendData && (backendData.totalAssets !== undefined || backendData.bankAccounts)) {
+        setReportData(backendData);
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend Balance Sheet API fetch failed, computing from local synced state:', err);
+    }
+
+    // Fallback: Compute from synced mockDb
     const allAccounts = mockDb.getAccounts();
-    setAccounts(allAccounts);
-
-    const newBalances: Record<string, number> = {};
+    const balances: Record<string, number> = {};
     allAccounts.forEach(acc => {
-      newBalances[acc.id] = mockDb.computeAccountBalance(acc.id, year);
+      balances[acc.id] = mockDb.computeAccountBalance(acc.id, year);
     });
-    setBalances(newBalances);
 
-    // Compute Net Income for Current Year Earnings
     const incomeAccounts = allAccounts.filter(a => a.type === AccountType.Income);
     const expenseAccounts = allAccounts.filter(a => a.type === AccountType.Expenses || a.type === AccountType.OtherExpenses);
-    
-    const totalIncome = incomeAccounts.reduce((sum, a) => sum + (newBalances[a.id] || 0), 0);
-    const totalExpenses = expenseAccounts.reduce((sum, a) => sum + (newBalances[a.id] || 0), 0);
-    
-    setNetIncome(totalIncome - totalExpenses);
+    const totalIncome = incomeAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
+    const totalExpenses = expenseAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
+    const netIncome = totalIncome - totalExpenses;
+
+    const bankAccounts: AccountReportItem[] = [];
+    const cashAccounts: AccountReportItem[] = [];
+    const otherAssetAccounts: AccountReportItem[] = [];
+    const capitalAccounts: AccountReportItem[] = [];
+    const liabilityAccounts: AccountReportItem[] = [];
+
+    allAccounts.forEach(acc => {
+      const item: AccountReportItem = {
+        id: acc.id,
+        name: acc.name,
+        type: acc.type,
+        balance: balances[acc.id] || 0,
+      };
+      if (acc.type === AccountType.Bank) bankAccounts.push(item);
+      else if (acc.type === AccountType.Cash) cashAccounts.push(item);
+      else if (acc.type === AccountType.Asset) otherAssetAccounts.push(item);
+      else if (acc.type === AccountType.Capital) capitalAccounts.push(item);
+      else if (acc.type === AccountType.Liability) liabilityAccounts.push(item);
+    });
+
+    const totalBank = bankAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalCash = cashAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalOtherAssets = otherAssetAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalAssets = totalBank + totalCash + totalOtherAssets;
+
+    const totalCapital = capitalAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalLiabilities = liabilityAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalLiabilitiesAndEquity = totalCapital + totalLiabilities + netIncome;
+    const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01;
+
+    setReportData({
+      year,
+      bankAccounts,
+      cashAccounts,
+      otherAssetAccounts,
+      capitalAccounts,
+      liabilityAccounts,
+      totalBank,
+      totalCash,
+      totalOtherAssets,
+      totalAssets,
+      totalCapital,
+      totalLiabilities,
+      netIncome,
+      totalLiabilitiesAndEquity,
+      isBalanced,
+    });
+    setLoading(false);
   }, [year]);
 
-  // Assets
-  const bankAccounts = accounts.filter(a => a.type === AccountType.Bank);
-  const cashAccounts = accounts.filter(a => a.type === AccountType.Cash);
-  const assetAccounts = accounts.filter(a => a.type === AccountType.Asset); // Debtors etc
-
-  const totalBank = bankAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  const totalCash = cashAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  const totalOtherAssets = assetAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  
-  const totalAssets = totalBank + totalCash + totalOtherAssets;
-
-  // Liabilities & Equity
-  const capitalAccounts = accounts.filter(a => a.type === AccountType.Capital);
-  const liabilityAccounts = accounts.filter(a => a.type === AccountType.Liability); // Creditors etc
-
-  const totalCapital = capitalAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  const totalLiabilities = liabilityAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  
-  const totalEquityAndLiabilities = totalCapital + totalLiabilities + netIncome;
-
-  const isBalanced = Math.abs(totalAssets - totalEquityAndLiabilities) < 0.01;
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
 
   const handlePrint = () => {
-    alert('Mock: Generating PDF of Balance Sheet...');
+    window.print();
   };
+
+  const isBalanced = reportData?.isBalanced ?? true;
 
   return (
     <MasterLayout
@@ -120,11 +187,11 @@ export function BalanceSheet() {
                       Bank
                     </td>
                   </tr>
-                  {bankAccounts.map(acc => (
+                  {(reportData?.bankAccounts || []).map(acc => (
                     <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 pl-6 text-slate-700">{acc.name}</td>
                       <td className="py-3 text-right font-medium">
-                        Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
                     </tr>
                   ))}
@@ -135,11 +202,11 @@ export function BalanceSheet() {
                       Cash
                     </td>
                   </tr>
-                  {cashAccounts.map(acc => (
+                  {(reportData?.cashAccounts || []).map(acc => (
                     <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 pl-6 text-slate-700">{acc.name}</td>
                       <td className="py-3 text-right font-medium">
-                        Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
                     </tr>
                   ))}
@@ -150,11 +217,11 @@ export function BalanceSheet() {
                       Current & Other Assets
                     </td>
                   </tr>
-                  {assetAccounts.map(acc => (
+                  {(reportData?.otherAssetAccounts || []).map(acc => (
                     <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 pl-6 text-slate-700">{acc.name}</td>
                       <td className="py-3 text-right font-medium">
-                        Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
                     </tr>
                   ))}
@@ -164,7 +231,7 @@ export function BalanceSheet() {
                   <tr className="bg-indigo-50/50">
                     <td className="py-5 pl-4 text-lg font-bold text-indigo-900">Total Assets</td>
                     <td className="py-5 text-right font-black text-xl text-indigo-700 border-t-2 border-indigo-200 border-b-4">
-                      Rs. {totalAssets.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      Rs. {(reportData?.totalAssets || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                   </tr>
                 </tbody>
@@ -185,11 +252,11 @@ export function BalanceSheet() {
                       Equity / Capital
                     </td>
                   </tr>
-                  {capitalAccounts.map(acc => (
+                  {(reportData?.capitalAccounts || []).map(acc => (
                     <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 pl-6 text-slate-700">{acc.name}</td>
                       <td className="py-3 text-right font-medium">
-                        Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
                     </tr>
                   ))}
@@ -198,7 +265,7 @@ export function BalanceSheet() {
                   <tr className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-3 pl-6 text-slate-700 font-medium">Current Year Earnings</td>
                     <td className="py-3 text-right font-semibold text-emerald-600">
-                      Rs. {netIncome.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      Rs. {(reportData?.netIncome || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                   </tr>
 
@@ -208,11 +275,11 @@ export function BalanceSheet() {
                       Liabilities
                     </td>
                   </tr>
-                  {liabilityAccounts.map(acc => (
+                  {(reportData?.liabilityAccounts || []).map(acc => (
                     <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="py-3 pl-6 text-slate-700">{acc.name}</td>
                       <td className="py-3 text-right font-medium">
-                        Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
                     </tr>
                   ))}
@@ -222,7 +289,7 @@ export function BalanceSheet() {
                   <tr className="bg-rose-50/50">
                     <td className="py-5 pl-4 text-lg font-bold text-rose-900">Total Liability & Equity</td>
                     <td className="py-5 text-right font-black text-xl text-rose-700 border-t-2 border-rose-200 border-b-4">
-                      Rs. {totalEquityAndLiabilities.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      Rs. {(reportData?.totalLiabilitiesAndEquity || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                   </tr>
                 </tbody>

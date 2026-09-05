@@ -5,18 +5,27 @@ import { cache } from '../utils/cache.js';
 
 const CACHE_KEY = 'accounts:list';
 
-export const getAccounts = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getAccounts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const cached = cache.get<any[]>(CACHE_KEY);
+    const { search } = req.query;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const cacheKey = `${CACHE_KEY}:${search || ''}`;
+
+    const cached = cache.get<any[]>(cacheKey);
     if (cached) {
       res.status(200).json(cached);
       return;
     }
 
-    const accounts = await Account.find().sort({ name: 1 });
+    const filter: any = {};
+    if (hasSearch) {
+      filter.name = { $regex: (search as string).trim(), $options: 'i' };
+    }
+
+    const accounts = await Account.find(filter).sort({ name: 1 });
     const formatted = accounts.map((a) => a.toJSON());
 
-    cache.set(CACHE_KEY, formatted, 60);
+    cache.set(cacheKey, formatted, 60);
     res.status(200).json(formatted);
   } catch (error) {
     next(error);
@@ -74,3 +83,23 @@ export const updateAccount = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const deleteAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const account = await Account.findByIdAndDelete(id);
+    if (!account) {
+      res.status(404).json({ message: 'Account not found' });
+      return;
+    }
+
+    cache.invalidate('accounts:');
+    cache.invalidate('reports:');
+
+    res.status(200).json({ success: true, message: 'Account deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+

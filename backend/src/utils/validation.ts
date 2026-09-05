@@ -3,8 +3,8 @@ export const validateLoginId = (loginId: string): string | null => {
     return 'Login ID is required.';
   }
   const trimmed = loginId.trim();
-  if (trimmed.length < 6 || trimmed.length > 12) {
-    return 'Login ID must be between 6 and 12 characters.';
+  if (trimmed.length < 3 || trimmed.length > 40) {
+    return 'Login ID must be between 3 and 40 characters.';
   }
   return null;
 };

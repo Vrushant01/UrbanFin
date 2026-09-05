@@ -69,11 +69,13 @@ export const createCategory = async (req: Request, res: Response, next: NextFunc
 export const getProducts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { search, type, categoryId } = req.query;
-    const cacheKey = `${PRODUCT_CACHE_PREFIX}list:${search || ''}:${type || ''}:${categoryId || ''}`;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const limit = hasSearch ? 500 : (Number(req.query.limit) || 120);
+    const cacheKey = `${PRODUCT_CACHE_PREFIX}list:${search || ''}:${type || ''}:${categoryId || ''}:${limit}`;
 
-    const cachedData = cache.get<any[]>(cacheKey);
-    if (cachedData) {
-      res.status(200).json(cachedData);
+    const cached = cache.get<any[]>(cacheKey);
+    if (cached) {
+      res.status(200).json(cached);
       return;
     }
 
@@ -87,8 +89,8 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
       filter.categoryId = categoryId.trim();
     }
 
-    if (search && typeof search === 'string' && search.trim()) {
-      const term = search.trim();
+    if (hasSearch) {
+      const term = (search as string).trim();
       // Search by name or category name
       const matchingCategories = await Category.find({
         name: { $regex: term, $options: 'i' },
@@ -101,7 +103,7 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
       ];
     }
 
-    const products = await Product.find(filter).sort({ createdAt: -1 });
+    const products = await Product.find(filter).sort({ createdAt: -1 }).limit(limit);
     const formatted = products.map((p) => p.toJSON());
 
     cache.set(cacheKey, formatted, CACHE_TTL);

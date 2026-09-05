@@ -4,7 +4,47 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>final-odoo</title>
+    <title>UrbanFin ERP</title>
+    <script>
+      // Suppress noisy third-party extension logs & MetaMask web3 deprecation warnings
+      (function () {
+        try {
+          Object.defineProperty(window, 'web3', {
+            value: undefined,
+            writable: true,
+            configurable: true,
+          });
+        } catch (_) {}
+
+        const suppressPatterns = [
+          'MetaMask no longer injects web3',
+          'ObjectMultiplex',
+          'MaxListenersExceededWarning',
+          'Permissions policy violation',
+          'devicemotion',
+          'deviceorientation',
+          'x-rtb-fingerprint-id',
+          'request-id',
+          'Razorpay checkout notice',
+          'preloaded using link preload',
+          'was loaded over HTTPS, but requested an insecure element',
+        ];
+
+        const originalWarn = console.warn;
+        console.warn = function (...args) {
+          const msg = args.map((a) => (typeof a === 'string' ? a : a?.message || '')).join(' ');
+          if (suppressPatterns.some((p) => msg.includes(p))) return;
+          originalWarn.apply(console, args);
+        };
+
+        const originalError = console.error;
+        console.error = function (...args) {
+          const msg = args.map((a) => (typeof a === 'string' ? a : a?.message || '')).join(' ');
+          if (suppressPatterns.some((p) => msg.includes(p))) return;
+          originalError.apply(console, args);
+        };
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -7,6 +7,7 @@ import {
   confirmBudget,
   reviseBudgetHandler,
   cancelBudget,
+  deleteBudget,
   getMatchingTransactionsHandler,
 } from '../controllers/budgetController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
@@ -22,5 +23,7 @@ router.put('/:id', requireAuth, requireRole([Role.Administrator, Role.Accountant
 router.post('/:id/confirm', requireAuth, requireRole([Role.Administrator, Role.Accountant]), confirmBudget);
 router.post('/:id/revise', requireAuth, requireRole([Role.Administrator, Role.Accountant]), reviseBudgetHandler);
 router.post('/:id/cancel', requireAuth, requireRole([Role.Administrator, Role.Accountant]), cancelBudget);
+router.delete('/:id', requireAuth, requireRole([Role.Administrator, Role.Accountant]), deleteBudget);
 
 export default router;
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
 import { MasterKanbanView } from '../../components/master/MasterKanbanView';
@@ -6,7 +6,12 @@ import { MasterFormView } from '../../components/master/MasterFormView';
 import { type Product, ProductType, type Category } from '../../types';
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
-import { Package, Camera } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Package, Camera, Trash2 } from 'lucide-react';
+
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
+import { calculateGST, getHSNCode } from '../../utils/gstUtils';
 
 const DEFAULT_PRODUCT: Partial<Product> = {
   name: '',
@@ -19,6 +24,7 @@ const DEFAULT_PRODUCT: Partial<Product> = {
 export function ProductMaster() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -28,11 +34,34 @@ export function ProductMaster() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load data
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const pData = await fetchWithCache<Product[]>(`/api/products?search=${encodeURIComponent(query)}`);
+      setProducts(pData);
+    } catch {
+      setProducts(mockDb.getProducts());
+    }
+
+    try {
+      const cData = await fetchWithCache<Category[]>('/api/products/categories');
+      setCategories(cData);
+    } catch {
+      setCategories(mockDb.getCategories());
+    }
+  }, [debouncedSearch]);
+
+  // Load data & live backend sync
   useEffect(() => {
-    setProducts(mockDb.getProducts());
-    setCategories(mockDb.getCategories());
-  }, [viewMode]);
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
 
   // Sync categoryInput with editingProduct.categoryId when editing an existing product
   useEffect(() => {
@@ -44,14 +73,7 @@ export function ProductMaster() {
     }
   }, [editingProduct?.categoryId, categories]);
 
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm) return products;
-    const lower = searchTerm.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(lower) || 
-      (categories.find(c => c.id === p.categoryId)?.name || '').toLowerCase().includes(lower)
-    );
-  }, [products, categories, searchTerm]);
+  const filteredProducts = products;
 
   // Actions
   const handleNew = () => {
@@ -70,7 +92,7 @@ export function ProductMaster() {
     setViewMode('list');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingProduct || !editingProduct.name) return;
 
     let finalCategoryId = editingProduct.categoryId;
@@ -99,9 +121,21 @@ export function ProductMaster() {
       mockDb.addProduct(payload);
     }
     
-    setProducts(mockDb.getProducts());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingProduct(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editingProduct?.id) return;
+    if (window.confirm(`Are you sure you want to delete "${editingProduct.name}"?`)) {
+      mockDb.deleteProduct(editingProduct.id);
+      await mockDb.syncWithBackend();
+      loadData();
+      setViewMode('list');
+      setEditingProduct(null);
+    }
   };
 
   const handleNewFromForm = () => {
@@ -131,45 +165,105 @@ export function ProductMaster() {
     },
     { key: 'name', header: 'Product Name' },
     { key: 'category', header: 'Category', render: (p) => categories.find(c => c.id === p.categoryId)?.name || '-' },
-    { key: 'type', header: 'Type' },
-    { key: 'salesPrice', header: 'Sales Price', render: (p) => `Rs. ${p.salesPrice.toFixed(2)}` },
-    { key: 'cost', header: 'Cost', render: (p) => `Rs. ${p.cost.toFixed(2)}` }
+    { 
+      key: 'type', 
+      header: 'Type & HSN', 
+      render: (p) => (
+        <div>
+          <span className="font-medium text-slate-800">{p.type}</span>
+          <span className="block text-[10px] font-mono text-slate-500">{getHSNCode(p.name)}</span>
+        </div>
+      ) 
+    },
+    { 
+      key: 'salesPrice', 
+      header: 'Sales Price (Excl. / Incl. GST)', 
+      render: (p) => {
+        const { totalWithGst } = calculateGST(p.salesPrice);
+        return (
+          <div>
+            <span className="font-semibold text-slate-900">Rs. {p.salesPrice.toFixed(2)}</span>
+            <span className="block text-[10px] font-bold text-indigo-600">Rs. {totalWithGst.toFixed(2)} (18% GST)</span>
+          </div>
+        );
+      } 
+    },
+    { key: 'cost', header: 'Cost Price', render: (p) => `Rs. ${p.cost.toFixed(2)}` }
   ];
 
   // Kanban View configuration
-  const renderCard = (p: Product) => (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col h-full">
-      <div className="h-40 bg-slate-100 flex items-center justify-center relative">
-        {p.image ? 
-          <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : 
-          <Package size={48} className="text-slate-300" />
-        }
-        <div className="absolute top-2 right-2 flex gap-1">
-          <span className="bg-white/90 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded text-slate-700 shadow-sm">
-            {categories.find(c => c.id === p.categoryId)?.name || 'Uncategorized'}
-          </span>
-          <span className="bg-indigo-600/90 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded text-white shadow-sm">
-            {p.type}
-          </span>
-        </div>
-      </div>
-      <div className="p-4 flex-grow flex flex-col">
-        <h3 className="font-bold text-slate-800 text-lg mb-4 line-clamp-2">{p.name}</h3>
-        <div className="mt-auto grid grid-cols-2 gap-2 text-sm border-t border-slate-100 pt-3">
-          <div>
-            <p className="text-slate-400 text-xs font-medium">Sales Price</p>
-            <p className="font-semibold text-slate-800">Rs. {p.salesPrice.toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-slate-400 text-xs font-medium">Cost</p>
-            <p className="font-semibold text-slate-600">Rs. {p.cost.toFixed(2)}</p>
+  const renderCard = (p: Product) => {
+    const { totalWithGst } = calculateGST(p.salesPrice);
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col h-full">
+        <div className="h-40 bg-slate-100 flex items-center justify-center relative">
+          {p.image ? 
+            <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : 
+            <Package size={48} className="text-slate-300" />
+          }
+          <div className="absolute top-2 right-2 flex gap-1">
+            <span className="bg-white/90 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded text-slate-700 shadow-sm">
+              {categories.find(c => c.id === p.categoryId)?.name || 'Uncategorized'}
+            </span>
+            <span className="bg-indigo-600/90 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded text-white shadow-sm">
+              {p.type}
+            </span>
           </div>
         </div>
+        <div className="p-4 flex-grow flex flex-col">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="font-bold text-slate-800 text-base line-clamp-2">{p.name}</h3>
+            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">
+              {getHSNCode(p.name)}
+            </span>
+          </div>
+          <div className="mt-auto grid grid-cols-2 gap-2 text-sm border-t border-slate-100 pt-3">
+            <div>
+              <p className="text-slate-400 text-xs font-medium">Sales Price</p>
+              <p className="font-bold text-slate-800">Rs. {p.salesPrice.toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-indigo-600">Rs. {totalWithGst.toFixed(2)} (incl. GST)</p>
+            </div>
+            <div>
+              <p className="text-slate-400 text-xs font-medium">Cost</p>
+              <p className="font-semibold text-slate-600">Rs. {p.cost.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const isFormValid = !!(editingProduct?.name && categoryInput.trim());
+
+  const renderFormActions = () => (
+    <div className="flex items-center gap-2">
+      <Button 
+        type="button" 
+        variant="secondary" 
+        onClick={handleNewFromForm}
+      >
+        New
+      </Button>
+      <Button 
+        type="button" 
+        variant="primary"
+        disabled={!isFormValid}
+        onClick={handleSave}
+      >
+        Confirm
+      </Button>
+      {editingProduct?.id && (
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleDelete}
+          className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+        >
+          <Trash2 size={16} /> Delete
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <MasterLayout
@@ -200,7 +294,7 @@ export function ProductMaster() {
       )}
 
       {viewMode === 'form' && editingProduct && (
-        <MasterFormView onSave={handleSave} onNew={handleNewFromForm} isFormValid={isFormValid}>
+        <MasterFormView renderActions={renderFormActions}>
           <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-8">
             {/* Left Col - Image */}
             <div className="flex-shrink-0 flex flex-col items-center">
@@ -304,3 +398,4 @@ export function ProductMaster() {
     </MasterLayout>
   );
 }
+

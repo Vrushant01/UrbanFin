@@ -1,6 +1,9 @@
 export enum Role {
+  MasterAdmin = 'MasterAdmin',
   Administrator = 'Administrator',
+  SubAdmin = 'SubAdmin',
   Accountant = 'Accountant',
+  Vendor = 'Vendor',
   User = 'User',
 }
 
@@ -12,6 +15,24 @@ export interface User {
   role: Role;
   password?: string;
   contactId?: string;
+  isSuspended?: boolean;
+  isMasterAdmin?: boolean;
+  createdAt?: string;
+}
+
+export interface VendorProduct {
+  id: string;
+  vendorId: string;
+  name: string;
+  categoryId?: string;
+  categoryName?: string;
+  price: number;
+  stockQuantity: number;
+  description?: string;
+  image?: string;
+  vendorName?: string;
+  vendorEmail?: string;
+  createdAt?: string;
 }
 
 export type OmitPassword<T> = Omit<T, 'password'>;
@@ -58,6 +79,7 @@ export interface Product {
   name: string;
   type: ProductType;
   categoryId: string; // Foreign key to Category
+  categoryName?: string;
   salesPrice: number;
   cost: number;
   image?: string; // Base64
@@ -162,6 +184,8 @@ export interface Budget {
 // Module 5 Types
 export enum PurchaseOrderStatus {
   Draft = 'Draft',
+  SentToVendor = 'Sent to Vendor',
+  Accepted = 'Accepted',
   Confirmed = 'Confirmed',
   Cancelled = 'Cancelled'
 }
@@ -236,6 +260,8 @@ export interface Payment {
   note: string;
   billId?: string; // Foreign key to VendorBill if linked
   invoiceId?: string; // Foreign key to CustomerInvoice if linked
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
 }
 
 // Module 6 Types
@@ -291,4 +317,10 @@ export interface CustomerInvoice {
   amountPaid: number;
   cashPaid: number;
   bankPaid: number;
+  paymentRequested?: boolean;
+  paymentRequestedAt?: string;
+  total?: number;
+  amountDue?: number;
+  customerName?: string;
+  customerEmail?: string;
 }

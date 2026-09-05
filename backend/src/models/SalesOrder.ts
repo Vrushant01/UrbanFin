@@ -61,7 +61,10 @@ const salesOrderSchema = new Schema<ISalesOrder>(
   }
 );
 
-salesOrderSchema.index({ customerId: 1 });
+salesOrderSchema.index({ customerId: 1, date: -1 });
+salesOrderSchema.index({ status: 1, date: -1 });
+salesOrderSchema.index({ createdAt: -1 });
 
 export const SalesOrder: Model<ISalesOrder> =
   mongoose.models.SalesOrder || mongoose.model<ISalesOrder>('SalesOrder', salesOrderSchema);
+

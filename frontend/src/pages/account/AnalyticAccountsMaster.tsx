@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
 import { MasterFormView } from '../../components/master/MasterFormView';
 import { type AnalyticAccount, AnalyticAccountType, type Budget } from '../../types';
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
-import { PieChart } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { PieChart, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
 const DEFAULT_ANALYTIC: Partial<AnalyticAccount> = {
   name: '',
@@ -16,25 +19,42 @@ const DEFAULT_ANALYTIC: Partial<AnalyticAccount> = {
 export function AnalyticAccountsMaster() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [analytics, setAnalytics] = useState<AnalyticAccount[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [editingAnalytic, setEditingAnalytic] = useState<Partial<AnalyticAccount> | null>(null);
 
-  // Load data
-  useEffect(() => {
-    setAnalytics(mockDb.getAnalyticAccounts());
-    setBudgets(mockDb.getBudgets());
-  }, [viewMode]);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
-  const filteredAnalytics = useMemo(() => {
-    if (!searchTerm) return analytics;
-    const lower = searchTerm.toLowerCase();
-    return analytics.filter(a => 
-      a.name.toLowerCase().includes(lower) || 
-      a.type.toLowerCase().includes(lower)
-    );
-  }, [analytics, searchTerm]);
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const aData = await fetchWithCache<AnalyticAccount[]>(`/api/analytic-accounts?search=${encodeURIComponent(query)}`);
+      setAnalytics(aData);
+    } catch {
+      setAnalytics(mockDb.getAnalyticAccounts());
+    }
+
+    try {
+      const bData = await fetchWithCache<Budget[]>('/api/budgets');
+      setBudgets(bData);
+    } catch {
+      setBudgets(mockDb.getBudgets());
+    }
+  }, [debouncedSearch]);
+
+  // Load data & live backend sync
+  useEffect(() => {
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
+
+  const filteredAnalytics = analytics;
 
   // Find all budgets associated with the currently editing analytic account
   const relatedBudgets = useMemo(() => {
@@ -60,7 +80,7 @@ export function AnalyticAccountsMaster() {
     setViewMode('list');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingAnalytic || !editingAnalytic.name) return;
 
     if (editingAnalytic.id) {
@@ -69,9 +89,21 @@ export function AnalyticAccountsMaster() {
       mockDb.addAnalyticAccount(editingAnalytic as Omit<AnalyticAccount, 'id'>);
     }
     
-    setAnalytics(mockDb.getAnalyticAccounts());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingAnalytic(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editingAnalytic?.id) return;
+    if (window.confirm(`Are you sure you want to delete "${editingAnalytic.name}"?`)) {
+      mockDb.deleteAnalyticAccount(editingAnalytic.id);
+      await mockDb.syncWithBackend();
+      loadData();
+      setViewMode('list');
+      setEditingAnalytic(null);
+    }
   };
 
   const handleNewFromForm = () => {
@@ -90,7 +122,7 @@ export function AnalyticAccountsMaster() {
       key: 'type', 
       header: 'Type',
       render: (a) => (
-        <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${a.type === AnalyticAccountType.Income ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+        <span className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded ${a.type === AnalyticAccountType.Income ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>
           {a.type}
         </span>
       )
@@ -99,11 +131,40 @@ export function AnalyticAccountsMaster() {
 
   const isFormValid = !!(editingAnalytic?.name);
 
+  const renderFormActions = () => (
+    <div className="flex items-center gap-2">
+      <Button 
+        type="button" 
+        variant="secondary" 
+        onClick={handleNewFromForm}
+      >
+        New
+      </Button>
+      <Button 
+        type="button" 
+        variant="primary"
+        disabled={!isFormValid}
+        onClick={handleSave}
+      >
+        Confirm
+      </Button>
+      {editingAnalytic?.id && (
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleDelete}
+          className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+        >
+          <Trash2 size={16} /> Delete
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <MasterLayout
       title="Analytic Accounts"
       viewMode={viewMode}
-      onViewModeChange={setViewMode}
       onNew={handleNew}
       onBack={handleBack}
       searchTerm={searchTerm}
@@ -127,7 +188,7 @@ export function AnalyticAccountsMaster() {
       )}
 
       {viewMode === 'form' && editingAnalytic && (
-        <MasterFormView onSave={handleSave} onNew={handleNewFromForm} isFormValid={isFormValid}>
+        <MasterFormView renderActions={renderFormActions}>
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
               <Input 
@@ -199,3 +260,4 @@ export function AnalyticAccountsMaster() {
     </MasterLayout>
   );
 }
+

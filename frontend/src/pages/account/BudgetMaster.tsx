@@ -12,6 +12,8 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Target, Plus, Trash2, ArrowRight } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
 const DEFAULT_BUDGET: Partial<Budget> = {
   name: '',
@@ -36,6 +38,7 @@ export function BudgetMaster() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticAccount[]>([]);
@@ -43,12 +46,41 @@ export function BudgetMaster() {
   
   const [editingBudget, setEditingBudget] = useState<Partial<Budget> | null>(null);
 
-  // Load data
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  const loadData = React.useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const bData = await fetchWithCache<Budget[]>(`/api/budgets?search=${encodeURIComponent(query)}`);
+      setBudgets(bData);
+    } catch {
+      setBudgets(mockDb.getBudgets());
+    }
+
+    try {
+      const aData = await fetchWithCache<AnalyticAccount[]>('/api/analytic-accounts');
+      setAnalytics(aData);
+    } catch {
+      setAnalytics(mockDb.getAnalyticAccounts());
+    }
+
+    try {
+      const cData = await fetchWithCache<Contact[]>('/api/contacts');
+      setContacts(cData);
+    } catch {
+      setContacts(mockDb.getContacts());
+    }
+  }, [debouncedSearch]);
+
+  // Load data & live backend sync
   useEffect(() => {
-    setBudgets(mockDb.getBudgets());
-    setAnalytics(mockDb.getAnalyticAccounts());
-    setContacts(mockDb.getContacts());
-  }, [viewMode]);
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
 
   // Handle deep linking from Analytic Accounts
   useEffect(() => {
@@ -63,14 +95,7 @@ export function BudgetMaster() {
     }
   }, [searchParams, budgets, setSearchParams]);
 
-  const filteredBudgets = useMemo(() => {
-    if (!searchTerm) return budgets;
-    const lower = searchTerm.toLowerCase();
-    return budgets.filter(b => 
-      b.name.toLowerCase().includes(lower) || 
-      b.status.toLowerCase().includes(lower)
-    );
-  }, [budgets, searchTerm]);
+  const filteredBudgets = budgets;
 
   // Actions
   const handleNew = () => {
@@ -91,14 +116,14 @@ export function BudgetMaster() {
     setViewMode('list');
   };
 
-  const handleSave = (status: BudgetStatus = BudgetStatus.Draft) => {
+  const handleSave = async (status: BudgetStatus = BudgetStatus.Draft) => {
     if (!editingBudget || !editingBudget.name) return;
 
     let finalBudget = { ...editingBudget, status } as Budget;
 
     // Trigger mock re-computations if moving to confirmed
     if (status === BudgetStatus.Confirmed && finalBudget.startDate && finalBudget.endDate) {
-      finalBudget.lines = finalBudget.lines.map(line => ({
+      finalBudget.lines = (finalBudget.lines || []).map(line => ({
         ...line,
         achievedAmount: mockDb.computeAchievedAmount(line.analyticAccountId, finalBudget.startDate, finalBudget.endDate)
       }));
@@ -110,12 +135,13 @@ export function BudgetMaster() {
       mockDb.addBudget(finalBudget as Omit<Budget, 'id'>);
     }
     
-    setBudgets(mockDb.getBudgets());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingBudget(null);
   };
 
-  const handleRevise = () => {
+  const handleRevise = async () => {
     if (!editingBudget || !editingBudget.id) return;
     
     // Set original to Revised status
@@ -133,16 +159,29 @@ export function BudgetMaster() {
     };
     
     const savedNewBudget = mockDb.addBudget(newBudget as Omit<Budget, 'id'>);
-    setBudgets(mockDb.getBudgets());
+    await mockDb.syncWithBackend();
+    loadData();
     setEditingBudget(savedNewBudget);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!editingBudget || !editingBudget.id) return;
     mockDb.updateBudget(editingBudget.id, { status: BudgetStatus.Cancelled });
-    setBudgets(mockDb.getBudgets());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingBudget(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editingBudget?.id) return;
+    if (window.confirm(`Are you sure you want to delete budget "${editingBudget.name}"?`)) {
+      mockDb.deleteBudget(editingBudget.id);
+      await mockDb.syncWithBackend();
+      loadData();
+      setViewMode('list');
+      setEditingBudget(null);
+    }
   };
 
   // Line item manipulation
@@ -298,47 +337,58 @@ export function BudgetMaster() {
   const renderFormActions = () => {
     if (!editingBudget) return null;
     
-    if (editingBudget.status === BudgetStatus.Confirmed) {
-      return (
-        <>
-          <Button type="button" variant="outline" onClick={handleCancel} className="text-red-600 border-red-200 hover:bg-red-50">
-            Cancel Budget
-          </Button>
-          <Button type="button" variant="primary" onClick={handleRevise}>
-            Revise Budget
-          </Button>
-        </>
-      );
-    }
-
-    if (editingBudget.status === BudgetStatus.Revised || editingBudget.status === BudgetStatus.Cancelled) {
-      return null; // Readonly, no main actions
-    }
-
-    // Draft
     return (
-      <>
-        {editingBudget.id && (
-          <Button type="button" variant="outline" onClick={handleCancel} className="text-red-600 border-red-200 hover:bg-red-50">
-            Cancel Budget
-          </Button>
-        )}
+      <div className="flex items-center gap-2">
         <Button 
           type="button" 
           variant="secondary" 
-          onClick={() => handleSave(BudgetStatus.Draft)}
+          onClick={handleNew}
         >
-          Save Draft
+          New
         </Button>
-        <Button 
-          type="button" 
-          variant="primary"
-          disabled={!editingBudget.lines?.length || !editingBudget.name}
-          onClick={() => handleSave(BudgetStatus.Confirmed)}
-        >
-          Confirm
-        </Button>
-      </>
+
+        {editingBudget.status === BudgetStatus.Confirmed && (
+          <>
+            <Button type="button" variant="outline" onClick={handleCancel} className="text-red-600 border-red-200 hover:bg-red-50">
+              Cancel Budget
+            </Button>
+            <Button type="button" variant="primary" onClick={handleRevise}>
+              Revise Budget
+            </Button>
+          </>
+        )}
+
+        {editingBudget.status === BudgetStatus.Draft && (
+          <>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => handleSave(BudgetStatus.Draft)}
+            >
+              Save Draft
+            </Button>
+            <Button 
+              type="button" 
+              variant="primary"
+              disabled={!editingBudget.lines?.length || !editingBudget.name}
+              onClick={() => handleSave(BudgetStatus.Confirmed)}
+            >
+              Confirm
+            </Button>
+          </>
+        )}
+
+        {editingBudget.id && (
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleDelete}
+            className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+          >
+            <Trash2 size={16} /> Delete
+          </Button>
+        )}
+      </div>
     );
   };
 

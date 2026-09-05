@@ -10,6 +10,8 @@ export interface IUser extends Document {
   passwordHash: string;
   role: Role;
   contactId?: string;
+  isSuspended: boolean;
+  isMasterAdmin: boolean;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -25,8 +27,8 @@ const userSchema = new Schema<IUser>(
       required: [true, 'Login ID is required'],
       unique: true,
       trim: true,
-      minlength: [6, 'Login ID must be at least 6 characters'],
-      maxlength: [12, 'Login ID must be at most 12 characters'],
+      minlength: [3, 'Login ID must be at least 3 characters'],
+      maxlength: [40, 'Login ID must be at most 40 characters'],
       lowercase: true,
     },
     email: {
@@ -50,6 +52,14 @@ const userSchema = new Schema<IUser>(
     contactId: {
       type: String,
       default: undefined,
+    },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    isMasterAdmin: {
+      type: Boolean,
+      default: false,
     },
   },
   {

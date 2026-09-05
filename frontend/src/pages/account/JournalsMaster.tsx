@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
 import { MasterFormView } from '../../components/master/MasterFormView';
 import { type Journal, JournalType, type Account } from '../../types';
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
-import { BookMarked } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { BookMarked, Trash2 } from 'lucide-react';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
 const DEFAULT_JOURNAL: Partial<Journal> = {
   name: '',
@@ -16,26 +19,42 @@ const DEFAULT_JOURNAL: Partial<Journal> = {
 export function JournalsMaster() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [journals, setJournals] = useState<Journal[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [editingJournal, setEditingJournal] = useState<Partial<Journal> | null>(null);
 
-  // Load data
-  useEffect(() => {
-    setJournals(mockDb.getJournals());
-    setAccounts(mockDb.getAccounts());
-  }, [viewMode]);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
-  const filteredJournals = useMemo(() => {
-    if (!searchTerm) return journals;
-    const lower = searchTerm.toLowerCase();
-    return journals.filter(j => 
-      j.name.toLowerCase().includes(lower) || 
-      j.type.toLowerCase().includes(lower) ||
-      (accounts.find(a => a.id === j.defaultAccountId)?.name || '').toLowerCase().includes(lower)
-    );
-  }, [journals, accounts, searchTerm]);
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const jData = await fetchWithCache<Journal[]>(`/api/journals?search=${encodeURIComponent(query)}`);
+      setJournals(jData);
+    } catch {
+      setJournals(mockDb.getJournals());
+    }
+
+    try {
+      const aData = await fetchWithCache<Account[]>('/api/accounts');
+      setAccounts(aData);
+    } catch {
+      setAccounts(mockDb.getAccounts());
+    }
+  }, [debouncedSearch]);
+
+  // Sync with Backend database on load
+  useEffect(() => {
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
+
+  const filteredJournals = journals;
 
   // Actions
   const handleNew = () => {
@@ -53,7 +72,7 @@ export function JournalsMaster() {
     setViewMode('list');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingJournal || !editingJournal.name || !editingJournal.defaultAccountId) return;
 
     if (editingJournal.id) {
@@ -62,9 +81,21 @@ export function JournalsMaster() {
       mockDb.addJournal(editingJournal as Omit<Journal, 'id'>);
     }
     
-    setJournals(mockDb.getJournals());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingJournal(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editingJournal?.id) return;
+    if (window.confirm(`Are you sure you want to delete "${editingJournal.name}"?`)) {
+      mockDb.deleteJournal(editingJournal.id);
+      await mockDb.syncWithBackend();
+      loadData();
+      setViewMode('list');
+      setEditingJournal(null);
+    }
   };
 
   const handleNewFromForm = () => {
@@ -79,7 +110,15 @@ export function JournalsMaster() {
       render: () => <div className="text-slate-400 flex justify-center"><BookMarked size={20} /></div>
     },
     { key: 'name', header: 'Journal Name' },
-    { key: 'type', header: 'Type' },
+    { 
+      key: 'type', 
+      header: 'Type',
+      render: (j) => (
+        <span className="inline-block px-2.5 py-0.5 text-xs font-semibold rounded bg-slate-100 text-slate-700 capitalize">
+          {j.type}
+        </span>
+      )
+    },
     { 
       key: 'defaultAccountId', 
       header: 'Default Account',
@@ -89,11 +128,40 @@ export function JournalsMaster() {
 
   const isFormValid = !!(editingJournal?.name && editingJournal?.defaultAccountId);
 
+  const renderFormActions = () => (
+    <div className="flex items-center gap-2">
+      <Button 
+        type="button" 
+        variant="secondary" 
+        onClick={handleNewFromForm}
+      >
+        New
+      </Button>
+      <Button 
+        type="button" 
+        variant="primary"
+        disabled={!isFormValid}
+        onClick={handleSave}
+      >
+        Confirm
+      </Button>
+      {editingJournal?.id && (
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleDelete}
+          className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+        >
+          <Trash2 size={16} /> Delete
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <MasterLayout
       title="Journals"
       viewMode={viewMode}
-      onViewModeChange={setViewMode}
       onNew={handleNew}
       onBack={handleBack}
       searchTerm={searchTerm}
@@ -117,7 +185,7 @@ export function JournalsMaster() {
       )}
 
       {viewMode === 'form' && editingJournal && (
-        <MasterFormView onSave={handleSave} onNew={handleNewFromForm} isFormValid={isFormValid}>
+        <MasterFormView renderActions={renderFormActions}>
           <div className="max-w-2xl mx-auto space-y-6">
             <Input 
               label="Journal Name" 
@@ -163,3 +231,4 @@ export function JournalsMaster() {
     </MasterLayout>
   );
 }
+

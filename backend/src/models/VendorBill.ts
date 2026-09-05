@@ -100,8 +100,11 @@ const vendorBillSchema = new Schema<IVendorBill>(
   }
 );
 
-vendorBillSchema.index({ vendorId: 1 });
-vendorBillSchema.index({ status: 1 });
+vendorBillSchema.index({ vendorId: 1, billDate: -1 });
+vendorBillSchema.index({ status: 1, billDate: -1 });
+vendorBillSchema.index({ billReference: 1 });
+vendorBillSchema.index({ createdAt: -1 });
 
 export const VendorBill: Model<IVendorBill> =
   mongoose.models.VendorBill || mongoose.model<IVendorBill>('VendorBill', vendorBillSchema);
+

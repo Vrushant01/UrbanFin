@@ -4,6 +4,7 @@ import {
   getJournalById,
   createJournal,
   updateJournal,
+  deleteJournal,
 } from '../controllers/journalController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { Role } from '../types/index.js';
@@ -14,5 +15,7 @@ router.get('/', requireAuth, requireRole([Role.Administrator, Role.Accountant]),
 router.get('/:id', requireAuth, requireRole([Role.Administrator, Role.Accountant]), getJournalById);
 router.post('/', requireAuth, requireRole([Role.Administrator, Role.Accountant]), createJournal);
 router.put('/:id', requireAuth, requireRole([Role.Administrator, Role.Accountant]), updateJournal);
+router.delete('/:id', requireAuth, requireRole([Role.Administrator, Role.Accountant]), deleteJournal);
 
 export default router;
+

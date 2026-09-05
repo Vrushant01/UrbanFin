@@ -1,6 +1,9 @@
 export enum Role {
+  MasterAdmin = 'MasterAdmin',
   Administrator = 'Administrator',
+  SubAdmin = 'SubAdmin',
   Accountant = 'Accountant',
+  Vendor = 'Vendor',
   User = 'User',
 }
 
@@ -11,6 +14,23 @@ export interface UserResponse {
   email: string;
   role: Role;
   contactId?: string;
+  isSuspended?: boolean;
+  isMasterAdmin?: boolean;
+  createdAt?: string;
+}
+
+export interface VendorProductResponse {
+  id: string;
+  vendorId: string;
+  name: string;
+  categoryId?: string;
+  categoryName?: string;
+  price: number;
+  stockQuantity: number;
+  description?: string;
+  image?: string;
+  vendorName?: string;
+  vendorEmail?: string;
 }
 
 export enum ContactType {
@@ -116,7 +136,7 @@ export interface JournalEntryResponse {
   lines: JournalEntryLine[];
   total: number;
   sourceDocument?: {
-    model: 'VendorBill' | 'CustomerInvoice';
+    model: 'VendorBill' | 'CustomerInvoice' | 'Payment';
     id: string;
   };
 }
@@ -163,6 +183,8 @@ export interface BudgetResponse {
 // Module 5 Types
 export enum PurchaseOrderStatus {
   Draft = 'Draft',
+  SentToVendor = 'Sent to Vendor',
+  Accepted = 'Accepted',
   Confirmed = 'Confirmed',
   Cancelled = 'Cancelled',
 }
@@ -295,6 +317,8 @@ export interface CustomerInvoiceResponse {
   bankPaid: number;
   amountDue?: number;
   total?: number;
+  paymentRequested?: boolean;
+  paymentRequestedAt?: string;
 }
 
 // Dashboard & Reports Types

@@ -11,7 +11,9 @@ import { cache } from '../utils/cache.js';
 export const getBudgets = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { search, status } = req.query;
-    const cacheKey = `budgets:list:${search || ''}:${status || ''}`;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const limit = hasSearch ? 500 : (Number(req.query.limit) || 120);
+    const cacheKey = `budgets:list:${search || ''}:${status || ''}:${limit}`;
 
     const cached = cache.get<any[]>(cacheKey);
     if (cached) {
@@ -21,11 +23,11 @@ export const getBudgets = async (req: Request, res: Response, next: NextFunction
 
     const filter: any = {};
     if (status) filter.status = status;
-    if (search && typeof search === 'string' && search.trim()) {
-      filter.name = { $regex: search.trim(), $options: 'i' };
+    if (hasSearch) {
+      filter.name = { $regex: (search as string).trim(), $options: 'i' };
     }
 
-    const rawBudgets = await Budget.find(filter).sort({ createdAt: -1 });
+    const rawBudgets = await Budget.find(filter).sort({ createdAt: -1 }).limit(limit);
 
     // Update live achieved calculations for confirmed budgets
     const budgets = await Promise.all(
@@ -187,6 +189,24 @@ export const cancelBudget = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+export const deleteBudget = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const budget = await Budget.findByIdAndDelete(id);
+    if (!budget) {
+      res.status(404).json({ message: 'Budget not found' });
+      return;
+    }
+
+    cache.invalidate('budgets:');
+    cache.invalidate('dashboard:');
+
+    res.status(200).json({ success: true, message: 'Budget deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMatchingTransactionsHandler = async (
   req: Request,
   res: Response,
@@ -211,3 +231,4 @@ export const getMatchingTransactionsHandler = async (
     next(error);
   }
 };
+

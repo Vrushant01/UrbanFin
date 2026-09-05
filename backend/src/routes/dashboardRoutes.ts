@@ -9,7 +9,7 @@ import { Role } from '../types/index.js';
 
 const router = Router();
 
-router.get('/summary', requireAuth, requireRole([Role.Administrator, Role.Accountant]), getDashboardSummary);
+router.get('/summary', requireAuth, getDashboardSummary);
 router.get('/payment-terms', getPaymentTerms);
 router.post('/payment-terms', requireAuth, requireRole([Role.Administrator, Role.Accountant]), addPaymentTerm);
 

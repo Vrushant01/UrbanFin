@@ -1,40 +1,99 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { AccountType, type Account } from '../../types';
-import { mockDb } from '../../mock/db';
+import { mockDb, apiCall } from '../../mock/db';
 import { Button } from '../../components/ui/Button';
-import { Printer } from 'lucide-react';
+import { Printer, RefreshCw, TrendingUp } from 'lucide-react';
+
+interface AccountReportItem {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+}
+
+interface ProfitAndLossReportData {
+  year: string;
+  incomeAccounts: AccountReportItem[];
+  purchaseExpenseAccounts: AccountReportItem[];
+  otherExpenseAccounts: AccountReportItem[];
+  totalIncome: number;
+  totalPurchaseExpenses: number;
+  totalOtherExpenses: number;
+  totalExpenses: number;
+  netIncome: number;
+}
 
 export function ProfitAndLossReport() {
   const [year, setYear] = useState('2026');
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState<ProfitAndLossReportData | null>(null);
 
-  useEffect(() => {
+  const loadReport = useCallback(async () => {
+    setLoading(true);
+    try {
+      await mockDb.syncWithBackend();
+      
+      // Attempt to fetch computed report from backend API
+      const backendData = await apiCall<ProfitAndLossReportData>('GET', `/reports/profit-and-loss?year=${year}`);
+      if (backendData && (backendData.totalIncome !== undefined || backendData.incomeAccounts)) {
+        setReportData(backendData);
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend P&L API fetch failed, computing from local synced state:', err);
+    }
+
+    // Fallback: Compute from synced mockDb
     const allAccounts = mockDb.getAccounts();
-    setAccounts(allAccounts);
-
-    const newBalances: Record<string, number> = {};
+    const balances: Record<string, number> = {};
     allAccounts.forEach(acc => {
-      newBalances[acc.id] = mockDb.computeAccountBalance(acc.id, year);
+      balances[acc.id] = mockDb.computeAccountBalance(acc.id, year);
     });
-    setBalances(newBalances);
+
+    const incomeAccounts: AccountReportItem[] = [];
+    const purchaseExpenseAccounts: AccountReportItem[] = [];
+    const otherExpenseAccounts: AccountReportItem[] = [];
+
+    allAccounts.forEach(acc => {
+      const item: AccountReportItem = {
+        id: acc.id,
+        name: acc.name,
+        type: acc.type,
+        balance: balances[acc.id] || 0
+      };
+      if (acc.type === AccountType.Income) incomeAccounts.push(item);
+      else if (acc.type === AccountType.Expenses) purchaseExpenseAccounts.push(item);
+      else if (acc.type === AccountType.OtherExpenses) otherExpenseAccounts.push(item);
+    });
+
+    const totalIncome = incomeAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalPurchaseExpenses = purchaseExpenseAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalOtherExpenses = otherExpenseAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const totalExpenses = totalPurchaseExpenses + totalOtherExpenses;
+    const netIncome = totalIncome - totalExpenses;
+
+    setReportData({
+      year,
+      incomeAccounts,
+      purchaseExpenseAccounts,
+      otherExpenseAccounts,
+      totalIncome,
+      totalPurchaseExpenses,
+      totalOtherExpenses,
+      totalExpenses,
+      netIncome,
+    });
+    setLoading(false);
   }, [year]);
 
-  // Calculations
-  const incomeAccounts = accounts.filter(a => a.type === AccountType.Income);
-  const purchaseExpenseAccounts = accounts.filter(a => a.type === AccountType.Expenses);
-  const otherExpenseAccounts = accounts.filter(a => a.type === AccountType.OtherExpenses);
-
-  const totalIncome = incomeAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  const totalPurchase = purchaseExpenseAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  const totalOther = otherExpenseAccounts.reduce((sum, a) => sum + (balances[a.id] || 0), 0);
-  
-  const totalExpenses = totalPurchase + totalOther;
-  const netIncome = totalIncome - totalExpenses;
+  useEffect(() => {
+    loadReport();
+  }, [loadReport]);
 
   const handlePrint = () => {
-    alert('Mock: Generating PDF of Profit & Loss Report...');
+    window.print();
   };
 
   return (
@@ -82,18 +141,18 @@ export function ProfitAndLossReport() {
                     Income
                   </td>
                 </tr>
-                {incomeAccounts.map(acc => (
+                {(reportData?.incomeAccounts || []).map(acc => (
                   <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-3 pl-4 text-slate-700">{acc.name}</td>
                     <td className="py-3 text-right font-medium">
-                      Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                   </tr>
                 ))}
                 <tr className="bg-indigo-50/50">
                   <td className="py-4 pl-4 font-bold text-indigo-900">Total Income</td>
                   <td className="py-4 text-right font-bold text-indigo-700 text-lg border-t-2 border-indigo-200">
-                    Rs. {totalIncome.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    Rs. {(reportData?.totalIncome || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </td>
                 </tr>
                 
@@ -112,11 +171,11 @@ export function ProfitAndLossReport() {
                     Direct Expenses (Purchases)
                   </td>
                 </tr>
-                {purchaseExpenseAccounts.map(acc => (
+                {(reportData?.purchaseExpenseAccounts || []).map(acc => (
                   <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-3 pl-8 text-slate-700">{acc.name}</td>
                     <td className="py-3 text-right font-medium">
-                      Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                   </tr>
                 ))}
@@ -126,11 +185,11 @@ export function ProfitAndLossReport() {
                     Indirect / Other Expenses
                   </td>
                 </tr>
-                {otherExpenseAccounts.map(acc => (
+                {(reportData?.otherExpenseAccounts || []).map(acc => (
                   <tr key={acc.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-3 pl-8 text-slate-700">{acc.name}</td>
                     <td className="py-3 text-right font-medium">
-                      Rs. {(balances[acc.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      Rs. {(acc.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                   </tr>
                 ))}
@@ -138,7 +197,7 @@ export function ProfitAndLossReport() {
                 <tr className="bg-rose-50/50">
                   <td className="py-4 pl-4 font-bold text-rose-900">Total Expenses</td>
                   <td className="py-4 text-right font-bold text-rose-700 text-lg border-t-2 border-rose-200">
-                    Rs. {totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    Rs. {(reportData?.totalExpenses || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </td>
                 </tr>
 
@@ -146,12 +205,12 @@ export function ProfitAndLossReport() {
                 <tr><td colSpan={2} className="h-12"></td></tr>
 
                 {/* Net Income Section */}
-                <tr className={netIncome >= 0 ? "bg-emerald-50" : "bg-red-50"}>
-                  <td className={`py-5 pl-4 text-xl font-black ${netIncome >= 0 ? 'text-emerald-900' : 'text-red-900'} uppercase`}>
+                <tr className={(reportData?.netIncome || 0) >= 0 ? "bg-emerald-50" : "bg-red-50"}>
+                  <td className={`py-5 pl-4 text-xl font-black ${(reportData?.netIncome || 0) >= 0 ? 'text-emerald-900' : 'text-red-900'} uppercase`}>
                     Net Income
                   </td>
-                  <td className={`py-5 text-right text-2xl font-black ${netIncome >= 0 ? 'text-emerald-700' : 'text-red-700'} border-y-4 ${netIncome >= 0 ? 'border-emerald-200' : 'border-red-200'}`}>
-                    Rs. {netIncome.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                  <td className={`py-5 text-right text-2xl font-black ${(reportData?.netIncome || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'} border-y-4 ${(reportData?.netIncome || 0) >= 0 ? 'border-emerald-200' : 'border-red-200'}`}>
+                    Rs. {(reportData?.netIncome || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </td>
                 </tr>
 

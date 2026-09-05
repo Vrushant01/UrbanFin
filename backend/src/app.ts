@@ -18,8 +18,11 @@ import salesOrderRoutes from './routes/salesOrderRoutes.js';
 import customerInvoiceRoutes from './routes/customerInvoiceRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import portalRoutes from './routes/portalRoutes.js';
+import vendorRoutes from './routes/vendorRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+
+import { seedDatabase, ensureSeeded } from './seed.js';
 
 dotenv.config();
 
@@ -49,6 +52,19 @@ app.get('/api/health', (_req, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
+});
+
+// Database Seeding Trigger
+app.all(['/api/seed', '/seed'], async (_req, res) => {
+  try {
+    await seedDatabase();
+    res.status(200).json({
+      status: 'ok',
+      message: 'Full database re-seeded successfully with Master Admin, Sub Admin, Vendors, Products, Chart of Accounts, Journals, and Budgets.',
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
 });
 
 // Mount All API Routes
@@ -101,6 +117,9 @@ app.use('/payments', paymentRoutes);
 
 app.use('/api/portal', portalRoutes);
 app.use('/portal', portalRoutes);
+
+app.use('/api/vendor-portal', vendorRoutes);
+app.use('/vendor-portal', vendorRoutes);
 
 app.use('/api/reports', reportRoutes);
 app.use('/reports', reportRoutes);

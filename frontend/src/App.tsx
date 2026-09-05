@@ -10,8 +10,10 @@ import { Login } from './pages/auth/Login';
 import { SignUp } from './pages/auth/SignUp';
 import { ForgotPassword } from './pages/auth/ForgotPassword';
 import { CreateUser } from './pages/admin/CreateUser';
+import { UserManagement } from './pages/admin/UserManagement';
 import { AppDashboard } from './pages/dashboard/AppDashboard';
 import { CustomerPortal } from './pages/portal/CustomerPortal';
+import { VendorPortal } from './pages/portal/VendorPortal';
 import { ContactMaster } from './pages/account/ContactMaster';
 import { ProductMaster } from './pages/account/ProductMaster';
 import { ChartOfAccountsMaster } from './pages/account/ChartOfAccountsMaster';
@@ -20,6 +22,7 @@ import { JournalEntriesMaster } from './pages/account/JournalEntriesMaster';
 import { AnalyticAccountsMaster } from './pages/account/AnalyticAccountsMaster';
 import { BudgetMaster } from './pages/account/BudgetMaster';
 import { PurchaseOrderMaster } from './pages/purchase/PurchaseOrderMaster';
+import { VendorSourcingHub } from './pages/purchase/VendorSourcingHub';
 import { VendorBillMaster } from './pages/purchase/VendorBillMaster';
 import { SalesOrderMaster } from './pages/sales/SalesOrderMaster';
 import { CustomerInvoiceMaster } from './pages/sales/CustomerInvoiceMaster';
@@ -38,29 +41,47 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Protected Routes for Admin & Accountant */}
-          <Route element={<RoleGuard allowedRoles={[Role.Administrator, Role.Accountant]} />}>
+          {/* Protected Routes for Management (MasterAdmin, Admin, SubAdmin, Accountant) */}
+          <Route
+            element={
+              <RoleGuard
+                allowedRoles={[
+                  Role.MasterAdmin,
+                  Role.Administrator,
+                  Role.SubAdmin,
+                  Role.Accountant,
+                ]}
+              />
+            }
+          >
             <Route element={<AppLayout />}>
               <Route path="/" element={<AppDashboard />} />
               <Route path="/sales">
                 <Route index element={<Navigate to="/sales/orders" replace />} />
                 <Route path="orders" element={<SalesOrderMaster />} />
+                <Route path="orders/*" element={<SalesOrderMaster />} />
                 <Route path="invoices" element={<CustomerInvoiceMaster />} />
+                <Route path="invoices/*" element={<CustomerInvoiceMaster />} />
+                <Route path="invoice" element={<CustomerInvoiceMaster />} />
+                <Route path="Invoices" element={<CustomerInvoiceMaster />} />
                 <Route path="receipt" element={<ReceiptMaster />} />
                 <Route path="receipts" element={<ReceiptMaster />} />
                 <Route path="Receipt" element={<ReceiptMaster />} />
                 <Route path="Receipts" element={<ReceiptMaster />} />
-                <Route path="*" element={<ReceiptMaster />} />
               </Route>
               <Route path="/purchase">
-                <Route index element={<Navigate to="/purchase/orders" replace />} />
+                <Route index element={<Navigate to="/purchase/sourcing" replace />} />
+                <Route path="sourcing" element={<VendorSourcingHub />} />
                 <Route path="orders" element={<PurchaseOrderMaster />} />
+                <Route path="orders/*" element={<PurchaseOrderMaster />} />
                 <Route path="bills" element={<VendorBillMaster />} />
+                <Route path="bills/*" element={<VendorBillMaster />} />
+                <Route path="bill" element={<VendorBillMaster />} />
+                <Route path="Bills" element={<VendorBillMaster />} />
                 <Route path="payment" element={<PaymentMaster />} />
                 <Route path="payments" element={<PaymentMaster />} />
                 <Route path="Payment" element={<PaymentMaster />} />
                 <Route path="Payments" element={<PaymentMaster />} />
-                <Route path="*" element={<PaymentMaster />} />
               </Route>
               <Route path="/account">
                 <Route index element={<Navigate to="/account/contact" replace />} />
@@ -80,18 +101,20 @@ function App() {
                 <Route path="balance-sheet" element={<BalanceSheet />} />
                 <Route path="*" element={<div className="p-4 bg-white rounded-lg border shadow-sm">Report Placeholder</div>} />
               </Route>
+
+              {/* Master Admin & Sub-Admin User Management */}
+              <Route path="/admin/users" element={<UserManagement />} />
+              <Route path="/users/new" element={<UserManagement />} />
             </Route>
           </Route>
 
-          {/* Protected Routes for Admin Only */}
-          <Route element={<RoleGuard allowedRoles={[Role.Administrator]} />}>
-            <Route element={<AppLayout />}>
-              <Route path="/users/new" element={<CreateUser />} />
-            </Route>
+          {/* Protected Routes for Vendors */}
+          <Route element={<RoleGuard allowedRoles={[Role.Vendor, Role.MasterAdmin, Role.Administrator]} />}>
+            <Route path="/vendor-portal" element={<VendorPortal />} />
           </Route>
 
-          {/* Protected Routes for Users (Customers) */}
-          <Route element={<RoleGuard allowedRoles={[Role.User]} />}>
+          {/* Protected Routes for Customers */}
+          <Route element={<RoleGuard allowedRoles={[Role.User, Role.MasterAdmin, Role.Administrator]} />}>
             <Route path="/portal" element={<CustomerPortal />} />
           </Route>
 

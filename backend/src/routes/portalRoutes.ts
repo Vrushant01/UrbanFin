@@ -8,7 +8,17 @@ import { Role } from '../types/index.js';
 
 const router = Router();
 
-router.get('/invoices', requireAuth, requireRole([Role.User]), getPortalInvoices);
-router.post('/invoices/:id/pay', requireAuth, requireRole([Role.User]), payPortalInvoice);
+router.get(
+  '/invoices',
+  requireAuth,
+  requireRole([Role.User, Role.Administrator, Role.MasterAdmin, Role.SubAdmin, Role.Accountant]),
+  getPortalInvoices
+);
+router.post(
+  '/invoices/:id/pay',
+  requireAuth,
+  requireRole([Role.User, Role.Administrator, Role.MasterAdmin, Role.SubAdmin, Role.Accountant]),
+  payPortalInvoice
+);
 
 export default router;

@@ -16,6 +16,8 @@ export interface ICustomerInvoice extends Document {
   bankPaid: number;
   total: number;
   amountDue: number;
+  paymentRequested?: boolean;
+  paymentRequestedAt?: string;
 }
 
 const customerInvoiceLineSchema = new Schema<CustomerInvoiceLine>(
@@ -79,6 +81,14 @@ const customerInvoiceSchema = new Schema<ICustomerInvoice>(
       type: Number,
       default: 0,
     },
+    paymentRequested: {
+      type: Boolean,
+      default: false,
+    },
+    paymentRequestedAt: {
+      type: String,
+      default: undefined,
+    },
   },
   {
     timestamps: true,
@@ -100,9 +110,12 @@ const customerInvoiceSchema = new Schema<ICustomerInvoice>(
   }
 );
 
-customerInvoiceSchema.index({ customerId: 1 });
-customerInvoiceSchema.index({ status: 1 });
+customerInvoiceSchema.index({ customerId: 1, invoiceDate: -1 });
+customerInvoiceSchema.index({ status: 1, invoiceDate: -1 });
+customerInvoiceSchema.index({ invoiceReference: 1 });
+customerInvoiceSchema.index({ createdAt: -1 });
 
 export const CustomerInvoice: Model<ICustomerInvoice> =
   mongoose.models.CustomerInvoice ||
   mongoose.model<ICustomerInvoice>('CustomerInvoice', customerInvoiceSchema);
+

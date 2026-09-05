@@ -87,7 +87,10 @@ const contactSchema = new Schema<IContact>(
   }
 );
 
+contactSchema.index({ type: 1, name: 1 });
+contactSchema.index({ createdAt: -1 });
 contactSchema.index({ name: 'text', email: 'text', phone: 'text' });
 
 export const Contact: Model<IContact> =
   mongoose.models.Contact || mongoose.model<IContact>('Contact', contactSchema);
+

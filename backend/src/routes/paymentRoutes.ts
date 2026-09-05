@@ -12,7 +12,7 @@ const router = Router();
 
 router.post('/create-order', createRazorpayOrder);
 router.post('/verify', verifyRazorpayPayment);
-router.get('/', requireAuth, requireRole([Role.Administrator, Role.Accountant]), getPayments);
-router.post('/', requireAuth, registerPayment);
+router.get('/', requireAuth, requireRole([Role.Administrator, Role.MasterAdmin, Role.SubAdmin, Role.Accountant, Role.User]), getPayments);
+router.post('/', requireAuth, requireRole([Role.Administrator, Role.MasterAdmin, Role.SubAdmin, Role.Accountant]), registerPayment);
 
 export default router;

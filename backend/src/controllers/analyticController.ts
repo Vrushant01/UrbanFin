@@ -5,18 +5,27 @@ import { cache } from '../utils/cache.js';
 
 const CACHE_KEY = 'analytics:list';
 
-export const getAnalyticAccounts = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getAnalyticAccounts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const cached = cache.get<any[]>(CACHE_KEY);
+    const { search } = req.query;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const cacheKey = `${CACHE_KEY}:${search || ''}`;
+
+    const cached = cache.get<any[]>(cacheKey);
     if (cached) {
       res.status(200).json(cached);
       return;
     }
 
-    const analytics = await AnalyticAccount.find().sort({ name: 1 });
+    const filter: any = {};
+    if (hasSearch) {
+      filter.name = { $regex: (search as string).trim(), $options: 'i' };
+    }
+
+    const analytics = await AnalyticAccount.find(filter).sort({ name: 1 });
     const formatted = analytics.map((a) => a.toJSON());
 
-    cache.set(CACHE_KEY, formatted, 60);
+    cache.set(cacheKey, formatted, 60);
     res.status(200).json(formatted);
   } catch (error) {
     next(error);
@@ -84,3 +93,20 @@ export const updateAnalyticAccount = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+export const deleteAnalyticAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const analytic = await AnalyticAccount.findByIdAndDelete(id);
+    if (!analytic) {
+      res.status(404).json({ message: 'Analytic account not found' });
+      return;
+    }
+
+    cache.invalidate('analytics:');
+    res.status(200).json({ success: true, message: 'Analytic account deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+

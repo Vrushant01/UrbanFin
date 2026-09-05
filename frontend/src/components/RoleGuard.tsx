@@ -14,12 +14,23 @@ export function RoleGuard({ allowedRoles }: RoleGuardProps) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(role)) {
-    // If a User tries to access Admin/Accountant areas
+  // MasterAdmin has top-level superuser privileges across management routes
+  const effectiveAllowedRoles = [...allowedRoles];
+  if (
+    allowedRoles.includes(Role.Administrator) ||
+    allowedRoles.includes(Role.SubAdmin) ||
+    allowedRoles.includes(Role.Accountant)
+  ) {
+    effectiveAllowedRoles.push(Role.MasterAdmin);
+  }
+
+  if (!effectiveAllowedRoles.includes(role)) {
+    if (role === Role.Vendor) {
+      return <Navigate to="/vendor-portal" replace />;
+    }
     if (role === Role.User) {
       return <Navigate to="/portal" replace />;
     }
-    // If Accountant tries to access Admin areas (like create user)
     return <Navigate to="/" replace />;
   }
 

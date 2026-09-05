@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
 import { MasterFormView } from '../../components/master/MasterFormView';
@@ -9,7 +9,10 @@ import {
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { Banknote, CheckCircle, CreditCard, Printer, ArrowLeft, Plus, FileText } from 'lucide-react';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { Banknote, CheckCircle, CreditCard, DollarSign, Printer, ArrowLeft, Plus, FileText } from 'lucide-react';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
 const DEFAULT_PAYMENT: Partial<Payment> = {
   type: PaymentType.Send,
@@ -24,6 +27,7 @@ const DEFAULT_PAYMENT: Partial<Payment> = {
 export function PaymentMaster() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [payments, setPayments] = useState<Payment[]>([]);
   const [vendors, setVendors] = useState<Contact[]>([]);
@@ -32,36 +36,43 @@ export function PaymentMaster() {
   const [editingPayment, setEditingPayment] = useState<Partial<Payment> | null>(null);
   const [viewingPayment, setViewingPayment] = useState<Payment | null>(null);
 
-  const loadData = () => {
-    const allPayments = mockDb.getPayments();
-    // Filter payments of type Send (Vendor Payments)
-    const vendorPayments = allPayments.filter(p => p.type === PaymentType.Send);
-    setPayments(vendorPayments);
-    setVendors(mockDb.getContacts().filter(c => c.type === ContactType.Vendor));
-    setBills(mockDb.getVendorBills());
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
   };
 
-  useEffect(() => {
-    loadData();
-    mockDb.syncWithBackend().then(loadData);
-  }, [viewMode]);
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const payData = await fetchWithCache<Payment[]>(`/api/payments?type=Send&search=${encodeURIComponent(query)}`);
+      setPayments(payData);
+    } catch {
+      const all = mockDb.getPayments().filter(p => p.type === PaymentType.Send);
+      setPayments(all);
+    }
 
-  const filteredPayments = useMemo(() => {
-    if (!searchTerm) return payments;
-    const lower = searchTerm.toLowerCase();
-    return payments.filter(p => {
-      const vendorName = vendors.find(v => v.id === p.partnerId)?.name.toLowerCase() || '';
-      const billNo = bills.find(b => b.id === p.billId)?.number.toLowerCase() || '';
-      const note = (p.note || '').toLowerCase();
-      return (
-        p.id.toLowerCase().includes(lower) ||
-        vendorName.includes(lower) ||
-        billNo.includes(lower) ||
-        note.includes(lower) ||
-        p.via.toLowerCase().includes(lower)
-      );
-    });
-  }, [payments, searchTerm, vendors, bills]);
+    try {
+      const vData = await fetchWithCache<Contact[]>('/api/contacts?type=Vendor');
+      setVendors(vData);
+    } catch {
+      setVendors(mockDb.getContacts().filter(c => c.type === ContactType.Vendor));
+    }
+
+    try {
+      const bData = await fetchWithCache<VendorBill[]>('/api/vendor-bills');
+      setBills(bData);
+    } catch {
+      setBills(mockDb.getVendorBills());
+    }
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
+
+  const filteredPayments = payments;
 
   const handleNew = () => {
     setEditingPayment({ ...DEFAULT_PAYMENT });
@@ -106,9 +117,9 @@ export function PaymentMaster() {
   const columns: Column<Payment>[] = [
     {
       key: 'id',
-      header: 'Payment #',
+      header: 'PAYMENT NO.',
       render: (p) => (
-        <span className="font-semibold text-indigo-600 flex items-center gap-1.5">
+        <span className="font-semibold text-blue-600 flex items-center gap-1.5">
           <Banknote size={15} />
           PAY/{new Date(p.date).getFullYear()}/{p.id.slice(0, 5).toUpperCase()}
         </span>
@@ -116,20 +127,20 @@ export function PaymentMaster() {
     },
     {
       key: 'date',
-      header: 'Date',
+      header: 'DATE',
       render: (p) => <span className="text-slate-600">{p.date}</span>
     },
     {
       key: 'partnerId',
-      header: 'Vendor',
+      header: 'VENDOR',
       render: (p) => {
         const ven = vendors.find(v => v.id === p.partnerId);
-        return <span className="font-medium text-slate-800">{ven?.name || p.partnerId}</span>;
+        return <span className="font-medium text-slate-800">{(p as any).partnerName || ven?.name || 'Vendor'}</span>;
       }
     },
     {
       key: 'billId',
-      header: 'Bill Reference',
+      header: 'BILL REF',
       render: (p) => {
         const bill = bills.find(b => b.id === p.billId);
         return bill ? (
@@ -143,14 +154,14 @@ export function PaymentMaster() {
     },
     {
       key: 'via',
-      header: 'Method',
+      header: 'METHOD',
       render: (p) => (
         p.via === PaymentVia.Cash ? (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-            <Banknote size={12} /> Cash
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <DollarSign size={12} /> Cash
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
             <CreditCard size={12} /> Bank Transfer
           </span>
         )
@@ -158,19 +169,19 @@ export function PaymentMaster() {
     },
     {
       key: 'amount',
-      header: 'Amount Paid',
+      header: 'AMOUNT',
       render: (p) => (
-        <span className="font-bold text-red-600">
-          Rs. {p.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        <span className="font-bold text-slate-900">
+          Rs. {p.amount.toLocaleString()}
         </span>
       )
     },
     {
       key: 'status',
-      header: 'Status',
+      header: 'STATUS',
       render: () => (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
-          <CheckCircle size={12} /> Paid
+        <span className="inline-block px-2.5 py-1 text-xs font-semibold rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200">
+          PAID
         </span>
       )
     }
@@ -186,7 +197,6 @@ export function PaymentMaster() {
   return (
     <MasterLayout
       title="Vendor Payments"
-      totalCount={filteredPayments.length}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       onNew={handleNew}
@@ -223,7 +233,7 @@ export function PaymentMaster() {
                       <CheckCircle size={10} /> Paid
                     </span>
                   </div>
-                  <h4 className="font-bold text-slate-800 text-base">{ven?.name || p.partnerId}</h4>
+                  <h4 className="font-bold text-slate-800 text-base">{(p as any).partnerName || ven?.name || 'Vendor'}</h4>
                   <p className="text-xs text-slate-500 mt-0.5">Date: {p.date}</p>
                   {bill && (
                     <p className="text-xs text-slate-700 font-mono mt-2 bg-slate-100 px-2 py-1 rounded inline-block">
@@ -292,26 +302,25 @@ export function PaymentMaster() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Vendor <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  <SearchableSelect
+                    label="Vendor"
+                    required
+                    placeholder="Search vendor by name or email..."
                     value={editingPayment.partnerId || ''}
-                    onChange={(e) => {
+                    asyncSearchUrl="/api/contacts?type=Vendor"
+                    options={vendors.map(v => ({
+                      id: v.id,
+                      name: v.name,
+                      subtitle: v.email || v.phone,
+                    }))}
+                    onChange={(val) => {
                       setEditingPayment({
                         ...editingPayment,
-                        partnerId: e.target.value,
+                        partnerId: val,
                         billId: ''
                       });
                     }}
-                    required
-                  >
-                    <option value="">Select Vendor</option>
-                    {vendors.map(v => (
-                      <option key={v.id} value={v.id}>{v.name} ({v.email || 'No email'})</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -324,12 +333,12 @@ export function PaymentMaster() {
                     onChange={(e) => {
                       const selectedBill = vendorBills.find(b => b.id === e.target.value);
                       const due = selectedBill 
-                        ? selectedBill.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0) - selectedBill.amountPaid 
-                        : editingPayment.amount;
+                        ? selectedBill.lines.reduce((s: number, l: any) => s + l.qty * l.unitPrice, 0) - selectedBill.amountPaid 
+                        : (editingPayment.amount || 0);
                       setEditingPayment({
                         ...editingPayment,
                         billId: e.target.value,
-                        amount: due > 0 ? due : editingPayment.amount
+                        amount: (due && due > 0) ? due : (editingPayment.amount || 0)
                       });
                     }}
                   >

@@ -14,7 +14,9 @@ const CACHE_TTL = 30; // 30 seconds
 export const getContacts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { search, type } = req.query;
-    const cacheKey = `${CACHE_PREFIX}list:${search || ''}:${type || ''}`;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const limit = hasSearch ? 500 : (Number(req.query.limit) || 120);
+    const cacheKey = `${CACHE_PREFIX}list:${search || ''}:${type || ''}:${limit}`;
 
     const cachedData = cache.get<any[]>(cacheKey);
     if (cachedData) {
@@ -28,8 +30,8 @@ export const getContacts = async (req: Request, res: Response, next: NextFunctio
       filter.type = type;
     }
 
-    if (search && typeof search === 'string' && search.trim()) {
-      const term = search.trim();
+    if (hasSearch) {
+      const term = (search as string).trim();
       filter.$or = [
         { name: { $regex: term, $options: 'i' } },
         { email: { $regex: term, $options: 'i' } },
@@ -37,7 +39,7 @@ export const getContacts = async (req: Request, res: Response, next: NextFunctio
       ];
     }
 
-    const contacts = await Contact.find(filter).sort({ createdAt: -1 });
+    const contacts = await Contact.find(filter).sort({ createdAt: -1 }).limit(limit);
     const formatted = contacts.map((c) => c.toJSON());
 
     cache.set(cacheKey, formatted, CACHE_TTL);

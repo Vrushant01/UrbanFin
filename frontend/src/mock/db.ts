@@ -37,7 +37,7 @@ const getAuthHeaders = (): Record<string, string> => {
   return headers;
 };
 
-async function apiCall<T>(method: string, path: string, body?: any): Promise<T | null> {
+export async function apiCall<T>(method: string, path: string, body?: any): Promise<T | null> {
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       method,
@@ -60,9 +60,11 @@ async function apiCall<T>(method: string, path: string, body?: any): Promise<T |
 const seedData = () => {
   if (!localStorage.getItem(STORAGE_KEY)) {
     const defaultUsers: User[] = [
-      { id: '1', name: 'Admin User', loginId: 'admin123', email: 'admin@urban.com', role: Role.Administrator, password: 'Password@123' },
-      { id: '2', name: 'Accountant User', loginId: 'account123', email: 'accountant@urban.com', role: Role.Accountant, password: 'Password@123' },
-      { id: '3', name: 'Customer John', loginId: 'johnuser', email: 'john@example.com', role: Role.User, password: 'Password@123', contactId: 'c2' },
+      { id: '1', name: 'Master Admin', loginId: 'admin123', email: 'admin@urban.com', role: Role.MasterAdmin, isMasterAdmin: true, isSuspended: false, password: 'Password@123' },
+      { id: '2', name: 'Operations SubAdmin', loginId: 'subadmin', email: 'subadmin@urban.com', role: Role.SubAdmin, isMasterAdmin: false, isSuspended: false, password: 'Password@123' },
+      { id: '3', name: 'Rahul Vendor', loginId: 'vendor123', email: 'rahul@example.com', role: Role.Vendor, isMasterAdmin: false, isSuspended: false, password: 'Password@123', contactId: 'c1' },
+      { id: '4', name: 'Accountant User', loginId: 'account123', email: 'accountant@urban.com', role: Role.Accountant, isMasterAdmin: false, isSuspended: false, password: 'Password@123' },
+      { id: '5', name: 'Customer John', loginId: 'johnuser', email: 'john@example.com', role: Role.User, isMasterAdmin: false, isSuspended: false, password: 'Password@123', contactId: 'c2' },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultUsers));
   }
@@ -93,6 +95,40 @@ const seedData = () => {
         phone: '987-654-3210',
         address: { street: '456 Market St', city: 'Business City', state: 'CA', country: 'USA', pincode: '98765' },
         hasPortalAccess: true
+      },
+      {
+        id: 'c3',
+        name: 'Urban Furnishings Supplier',
+        type: ContactType.Vendor,
+        email: 'supplier@urbanfurnish.com',
+        phone: '998-877-6655',
+        address: { street: '78 Industrial Area', city: 'Mumbai', state: 'MH', country: 'India', pincode: '400001' },
+      },
+      {
+        id: 'c4',
+        name: 'Acme Woodworks Ltd',
+        type: ContactType.Vendor,
+        email: 'contact@acmewood.com',
+        phone: '887-766-5544',
+        address: { street: '12 Timber Estate', city: 'Bangalore', state: 'KA', country: 'India', pincode: '560001' },
+      },
+      {
+        id: 'c5',
+        name: 'Priya Sharma Enterprises',
+        type: ContactType.Customer,
+        email: 'priya@enterprise.com',
+        phone: '776-655-4433',
+        address: { street: '55 Tech Park Avenue', city: 'Pune', state: 'MH', country: 'India', pincode: '411001' },
+        hasPortalAccess: true
+      },
+      {
+        id: 'c6',
+        name: 'Nexus Commercial Interiors',
+        type: ContactType.Customer,
+        email: 'orders@nexuscorp.com',
+        phone: '665-544-3322',
+        address: { street: '90 Cyber City', city: 'Gurugram', state: 'HR', country: 'India', pincode: '122002' },
+        hasPortalAccess: true
       }
     ];
     localStorage.setItem(CONTACTS_KEY, JSON.stringify(defaultContacts));
@@ -115,6 +151,30 @@ const seedData = () => {
         categoryId: 'cat1',
         salesPrice: 10000,
         cost: 7000
+      },
+      {
+        id: 'p3',
+        name: 'Executive Teak Desk',
+        type: ProductType.Goods,
+        categoryId: 'cat2',
+        salesPrice: 22000,
+        cost: 14000
+      },
+      {
+        id: 'p4',
+        name: 'Ergonomic Mesh Chair',
+        type: ProductType.Goods,
+        categoryId: 'cat2',
+        salesPrice: 8500,
+        cost: 5000
+      },
+      {
+        id: 'p5',
+        name: 'Premium L-Shape Sofa Set',
+        type: ProductType.Goods,
+        categoryId: 'cat2',
+        salesPrice: 45000,
+        cost: 28000
       }
     ];
     localStorage.setItem(PRODUCTS_KEY, JSON.stringify(defaultProducts));
@@ -122,24 +182,26 @@ const seedData = () => {
 
   if (!localStorage.getItem(ACCOUNTS_KEY)) {
     const defaultAccounts: Account[] = [
-      { id: 'a1', name: 'Cash A/c', type: AccountType.Cash },
-      { id: 'a2', name: 'Bank A/c', type: AccountType.Bank },
-      { id: 'a3', name: 'Debtors A/c', type: AccountType.Asset },
-      { id: 'a4', name: 'Creditors A/c', type: AccountType.Liability },
-      { id: 'a5', name: 'Capital A/c', type: AccountType.Capital },
-      { id: 'a6', name: 'Sales Income A/c', type: AccountType.Income },
-      { id: 'a7', name: 'Purchase Expense A/c', type: AccountType.Expenses },
-      { id: 'a8', name: 'Other Expense A/c', type: AccountType.OtherExpenses },
+      { id: 'a1', name: 'HDFC Bank', type: AccountType.Bank },
+      { id: 'a2', name: 'Cash', type: AccountType.Cash },
+      { id: 'a3', name: 'Cost of Goods Sold (Purchases)', type: AccountType.Expenses },
+      { id: 'a4', name: 'Furniture Sales', type: AccountType.Income },
+      { id: 'a5', name: 'Debtors A/c', type: AccountType.Asset },
+      { id: 'a6', name: 'Creditors A/c', type: AccountType.Liability },
+      { id: 'a7', name: 'Capital A/c', type: AccountType.Capital },
+      { id: 'a8', name: 'Office Supplies & Logistics', type: AccountType.Expenses },
+      { id: 'a9', name: 'Consulting & Services Revenue', type: AccountType.Income },
+      { id: 'a10', name: 'Rent & Utility Expenses', type: AccountType.OtherExpenses },
     ];
     localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(defaultAccounts));
   }
 
   if (!localStorage.getItem(JOURNALS_KEY)) {
     const defaultJournals: Journal[] = [
-      { id: 'j1', name: 'Sales', type: JournalType.Sales, defaultAccountId: 'a6' },
-      { id: 'j2', name: 'Purchase', type: JournalType.Purchase, defaultAccountId: 'a7' },
-      { id: 'j3', name: 'Bank', type: JournalType.Bank, defaultAccountId: 'a2' },
-      { id: 'j4', name: 'Cash', type: JournalType.Cash, defaultAccountId: 'a1' },
+      { id: 'j1', name: 'Bank Journal', type: JournalType.Bank, defaultAccountId: 'a1' },
+      { id: 'j2', name: 'Cash Journal', type: JournalType.Cash, defaultAccountId: 'a2' },
+      { id: 'j3', name: 'Purchase Journal', type: JournalType.Purchase, defaultAccountId: 'a3' },
+      { id: 'j4', name: 'Sales Journal', type: JournalType.Sales, defaultAccountId: 'a4' },
     ];
     localStorage.setItem(JOURNALS_KEY, JSON.stringify(defaultJournals));
   }
@@ -149,52 +211,63 @@ const seedData = () => {
       {
         id: 'je0',
         date: '2026-01-01',
-        number: 'JRNL/2026/0000',
-        journalId: 'j3',
+        number: 'JRNL/2026/0001',
+        journalId: 'j1',
         status: JournalEntryStatus.Posted,
         total: 100000,
         lines: [
-          { id: 'jel0_1', accountId: 'a2', debit: 100000, credit: 0 },
-          { id: 'jel0_2', accountId: 'a5', debit: 0, credit: 100000 }
+          { id: 'jel0_1', accountId: 'a1', debit: 100000, credit: 0 },
+          { id: 'jel0_2', accountId: 'a7', debit: 0, credit: 100000 }
         ]
       },
       {
         id: 'je1',
         date: '2026-09-01',
-        number: 'Bill/2026/0001',
-        journalId: 'j2',
+        number: 'JRNL/2026/0002',
+        journalId: 'j3',
         partnerId: 'c1',
         status: JournalEntryStatus.Posted,
         total: 30000,
         lines: [
-          { id: 'jel1', accountId: 'a7', partnerId: 'c1', debit: 30000, credit: 0 },
-          { id: 'jel2', accountId: 'a4', partnerId: 'c1', debit: 0, credit: 30000 }
+          { id: 'jel1', accountId: 'a3', partnerId: 'c1', debit: 30000, credit: 0 },
+          { id: 'jel2', accountId: 'a6', partnerId: 'c1', debit: 0, credit: 30000 }
         ]
       },
       {
         id: 'je2',
         date: '2026-09-02',
-        number: 'Inv/2026/0001',
-        journalId: 'j1',
+        number: 'JRNL/2026/0003',
+        journalId: 'j4',
         partnerId: 'c2',
         status: JournalEntryStatus.Posted,
         total: 10500,
         lines: [
-          { id: 'jel3', accountId: 'a3', partnerId: 'c2', debit: 10500, credit: 0 },
-          { id: 'jel4', accountId: 'a6', partnerId: 'c2', debit: 0, credit: 10500 }
+          { id: 'jel3', accountId: 'a5', partnerId: 'c2', debit: 10500, credit: 0 },
+          { id: 'jel4', accountId: 'a4', partnerId: 'c2', debit: 0, credit: 10500 }
         ]
       },
       {
         id: 'je3',
         date: '2026-09-03',
-        number: 'JRNL/2026/0001',
-        journalId: 'j3',
-        partnerId: 'c1',
+        number: 'JRNL/2026/0004',
+        journalId: 'j2',
         status: JournalEntryStatus.Posted,
-        total: 10000,
+        total: 15000,
         lines: [
-          { id: 'jel5', accountId: 'a3', partnerId: 'c1', debit: 10000, credit: 0 },
-          { id: 'jel6', accountId: 'a2', partnerId: 'c1', debit: 0, credit: 10000 }
+          { id: 'jel5', accountId: 'a2', debit: 15000, credit: 0 },
+          { id: 'jel6', accountId: 'a1', debit: 0, credit: 15000 }
+        ]
+      },
+      {
+        id: 'je4',
+        date: '2026-09-04',
+        number: 'JRNL/2026/0005',
+        journalId: 'j1',
+        status: JournalEntryStatus.Posted,
+        total: 8000,
+        lines: [
+          { id: 'jel7', accountId: 'a10', debit: 8000, credit: 0 },
+          { id: 'jel8', accountId: 'a1', debit: 0, credit: 8000 }
         ]
       }
     ];
@@ -205,6 +278,9 @@ const seedData = () => {
     const defaultAnalytics: AnalyticAccount[] = [
       { id: 'ana1', name: 'Furniture', type: AnalyticAccountType.Expenses },
       { id: 'ana2', name: 'Software Sales', type: AnalyticAccountType.Income },
+      { id: 'ana3', name: 'Corporate Fitout Project Alpha', type: AnalyticAccountType.Income },
+      { id: 'ana4', name: 'Showroom Maintenance & Operations', type: AnalyticAccountType.Expenses },
+      { id: 'ana5', name: 'Digital Marketing & PR Campaign', type: AnalyticAccountType.Expenses },
     ];
     localStorage.setItem(ANALYTIC_ACCOUNTS_KEY, JSON.stringify(defaultAnalytics));
   }
@@ -213,9 +289,9 @@ const seedData = () => {
     const defaultBudgets: Budget[] = [
       {
         id: 'b1',
-        name: 'January 2026',
+        name: 'FY2026 Annual Operations Budget',
         startDate: '2026-01-01',
-        endDate: '2026-01-31',
+        endDate: '2026-12-31',
         responsibleId: '1',
         status: BudgetStatus.Confirmed,
         lines: [
@@ -223,7 +299,38 @@ const seedData = () => {
             id: 'bl1',
             analyticAccountId: 'ana1',
             type: AnalyticAccountType.Expenses,
+            committedAmount: 500000,
+            achievedAmount: 0
+          },
+          {
+            id: 'bl2',
+            analyticAccountId: 'ana4',
+            type: AnalyticAccountType.Expenses,
+            committedAmount: 150000,
+            achievedAmount: 0
+          },
+          {
+            id: 'bl3',
+            analyticAccountId: 'ana5',
+            type: AnalyticAccountType.Expenses,
             committedAmount: 200000,
+            achievedAmount: 0
+          }
+        ]
+      },
+      {
+        id: 'b2',
+        name: 'January 2026 Monthly Budget',
+        startDate: '2026-01-01',
+        endDate: '2026-01-31',
+        responsibleId: '1',
+        status: BudgetStatus.Confirmed,
+        lines: [
+          {
+            id: 'bl4',
+            analyticAccountId: 'ana1',
+            type: AnalyticAccountType.Expenses,
+            committedAmount: 60000,
             achievedAmount: 0
           }
         ]
@@ -235,6 +342,7 @@ const seedData = () => {
   if (!localStorage.getItem(PAYMENT_TERMS_KEY)) {
     localStorage.setItem(PAYMENT_TERMS_KEY, JSON.stringify(['Immediate Payment', '15 Days', '30 Days', '45 Days']));
   }
+
 
   if (!localStorage.getItem(INVOICES_KEY)) {
     const defaultInvoices: CustomerInvoice[] = [
@@ -279,6 +387,27 @@ const seedData = () => {
             unitPrice: 25000
           }
         ]
+      },
+      {
+        id: 'inv3',
+        number: 'INV/2026/0500',
+        customerId: 'c2',
+        invoiceReference: 'Maintenance Test Service',
+        invoiceDate: '2026-09-01',
+        dueDate: '2026-09-15',
+        status: CustomerInvoiceStatus.Confirmed,
+        amountPaid: 0,
+        cashPaid: 0,
+        bankPaid: 0,
+        lines: [
+          {
+            id: 'il3',
+            productId: 'p2',
+            accountId: 'a6',
+            qty: 1,
+            unitPrice: 500
+          }
+        ]
       }
     ];
     localStorage.setItem(INVOICES_KEY, JSON.stringify(defaultInvoices));
@@ -319,6 +448,11 @@ export const mockDb = {
         if (portalInvoices && Array.isArray(portalInvoices)) {
           localStorage.setItem(INVOICES_KEY, JSON.stringify(portalInvoices));
         }
+        return;
+      }
+
+      // Vendor role does not need to sync the admin suite
+      if (session.role === Role.Vendor) {
         return;
       }
 
@@ -413,6 +547,12 @@ export const mockDb = {
     apiCall('PUT', `/contacts/${id}`, contact).catch(console.warn);
     return contacts[index];
   },
+  deleteContact: (id: string): boolean => {
+    const contacts = mockDb.getContacts().filter(c => c.id !== id);
+    mockDb.saveContacts(contacts);
+    apiCall('DELETE', `/contacts/${id}`).catch(console.warn);
+    return true;
+  },
   checkUniqueContactEmail: (email: string, excludeId?: string): boolean => {
     const contacts = mockDb.getContacts();
     return !contacts.some(c => c.email.toLowerCase() === email.toLowerCase() && c.id !== excludeId);
@@ -463,6 +603,12 @@ export const mockDb = {
     apiCall('PUT', `/products/${id}`, product).catch(console.warn);
     return products[index];
   },
+  deleteProduct: (id: string): boolean => {
+    const products = mockDb.getProducts().filter(p => p.id !== id);
+    mockDb.saveProducts(products);
+    apiCall('DELETE', `/products/${id}`).catch(console.warn);
+    return true;
+  },
 
   // Accounts
   getAccounts: (): Account[] => JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '[]'),
@@ -473,7 +619,16 @@ export const mockDb = {
     accounts.push(newAccount);
     mockDb.saveAccounts(accounts);
 
-    apiCall('POST', '/accounts', account).catch(console.warn);
+    apiCall<Account>('POST', '/accounts', account).then(saved => {
+      if (saved && saved.id) {
+        const list = mockDb.getAccounts();
+        const idx = list.findIndex(a => a.id === newAccount.id);
+        if (idx !== -1) {
+          list[idx] = saved;
+          mockDb.saveAccounts(list);
+        }
+      }
+    }).catch(console.warn);
     return newAccount;
   },
   updateAccount: (id: string, account: Partial<Account>): Account | null => {
@@ -486,6 +641,12 @@ export const mockDb = {
     apiCall('PUT', `/accounts/${id}`, account).catch(console.warn);
     return accounts[index];
   },
+  deleteAccount: (id: string): boolean => {
+    const accounts = mockDb.getAccounts().filter(a => a.id !== id);
+    mockDb.saveAccounts(accounts);
+    apiCall('DELETE', `/accounts/${id}`).catch(console.warn);
+    return true;
+  },
 
   // Journals
   getJournals: (): Journal[] => JSON.parse(localStorage.getItem(JOURNALS_KEY) || '[]'),
@@ -496,7 +657,16 @@ export const mockDb = {
     journals.push(newJournal);
     mockDb.saveJournals(journals);
 
-    apiCall('POST', '/journals', journal).catch(console.warn);
+    apiCall<Journal>('POST', '/journals', journal).then(saved => {
+      if (saved && saved.id) {
+        const list = mockDb.getJournals();
+        const idx = list.findIndex(j => j.id === newJournal.id);
+        if (idx !== -1) {
+          list[idx] = saved;
+          mockDb.saveJournals(list);
+        }
+      }
+    }).catch(console.warn);
     return newJournal;
   },
   updateJournal: (id: string, journal: Partial<Journal>): Journal | null => {
@@ -508,6 +678,12 @@ export const mockDb = {
 
     apiCall('PUT', `/journals/${id}`, journal).catch(console.warn);
     return journals[index];
+  },
+  deleteJournal: (id: string): boolean => {
+    const journals = mockDb.getJournals().filter(j => j.id !== id);
+    mockDb.saveJournals(journals);
+    apiCall('DELETE', `/journals/${id}`).catch(console.warn);
+    return true;
   },
 
   // Journal Entries
@@ -525,7 +701,16 @@ export const mockDb = {
     entries.push(newEntry);
     mockDb.saveJournalEntries(entries);
 
-    apiCall('POST', '/journal-entries', entry).catch(console.warn);
+    apiCall<JournalEntry>('POST', '/journal-entries', entry).then(saved => {
+      if (saved && saved.id) {
+        const list = mockDb.getJournalEntries();
+        const idx = list.findIndex(e => e.id === newEntry.id);
+        if (idx !== -1) {
+          list[idx] = saved;
+          mockDb.saveJournalEntries(list);
+        }
+      }
+    }).catch(console.warn);
     return newEntry;
   },
   updateJournalEntry: (id: string, entry: Partial<JournalEntry>): JournalEntry | null => {
@@ -552,6 +737,12 @@ export const mockDb = {
 
     return updatedEntry;
   },
+  deleteJournalEntry: (id: string): boolean => {
+    const entries = mockDb.getJournalEntries().filter(e => e.id !== id);
+    mockDb.saveJournalEntries(entries);
+    apiCall('DELETE', `/journal-entries/${id}`).catch(console.warn);
+    return true;
+  },
 
   // Analytic Accounts
   getAnalyticAccounts: (): AnalyticAccount[] => JSON.parse(localStorage.getItem(ANALYTIC_ACCOUNTS_KEY) || '[]'),
@@ -562,7 +753,16 @@ export const mockDb = {
     analytics.push(newAnalytic);
     mockDb.saveAnalyticAccounts(analytics);
 
-    apiCall('POST', '/analytics', analytic).catch(console.warn);
+    apiCall<AnalyticAccount>('POST', '/analytics', analytic).then(saved => {
+      if (saved && saved.id) {
+        const list = mockDb.getAnalyticAccounts();
+        const idx = list.findIndex(a => a.id === newAnalytic.id);
+        if (idx !== -1) {
+          list[idx] = saved;
+          mockDb.saveAnalyticAccounts(list);
+        }
+      }
+    }).catch(console.warn);
     return newAnalytic;
   },
   updateAnalyticAccount: (id: string, analytic: Partial<AnalyticAccount>): AnalyticAccount | null => {
@@ -575,6 +775,12 @@ export const mockDb = {
     apiCall('PUT', `/analytics/${id}`, analytic).catch(console.warn);
     return analytics[index];
   },
+  deleteAnalyticAccount: (id: string): boolean => {
+    const analytics = mockDb.getAnalyticAccounts().filter(a => a.id !== id);
+    mockDb.saveAnalyticAccounts(analytics);
+    apiCall('DELETE', `/analytics/${id}`).catch(console.warn);
+    return true;
+  },
 
   // Budgets
   getBudgets: (): Budget[] => JSON.parse(localStorage.getItem(BUDGETS_KEY) || '[]'),
@@ -585,7 +791,16 @@ export const mockDb = {
     budgets.push(newBudget);
     mockDb.saveBudgets(budgets);
 
-    apiCall('POST', '/budgets', budget).catch(console.warn);
+    apiCall<Budget>('POST', '/budgets', budget).then(saved => {
+      if (saved && saved.id) {
+        const list = mockDb.getBudgets();
+        const idx = list.findIndex(b => b.id === newBudget.id);
+        if (idx !== -1) {
+          list[idx] = saved;
+          mockDb.saveBudgets(list);
+        }
+      }
+    }).catch(console.warn);
     return newBudget;
   },
   updateBudget: (id: string, budget: Partial<Budget>): Budget | null => {
@@ -605,6 +820,13 @@ export const mockDb = {
 
     return budgets[index];
   },
+  deleteBudget: (id: string): boolean => {
+    const budgets = mockDb.getBudgets().filter(b => b.id !== id);
+    mockDb.saveBudgets(budgets);
+    apiCall('DELETE', `/budgets/${id}`).catch(console.warn);
+    return true;
+  },
+
 
   // Budgets computation
   computeAchievedAmount: (analyticAccountId: string, startDate: string, endDate: string): number => {
@@ -914,14 +1136,20 @@ export const mockDb = {
     const targetJournal = journals.find(j => j.type === journalType);
 
     apiCall('POST', '/payments', {
-      date: newPayment.date,
-      partnerId: newPayment.partnerId,
-      journalId: targetJournal?.id || (newPayment.via === PaymentVia.Cash ? 'Cash' : 'Bank'),
+      type: newPayment.type,
       paymentType: newPayment.type,
+      partnerId: newPayment.partnerId,
       amount: newPayment.amount,
+      date: newPayment.date,
+      via: newPayment.via,
       paymentMethod: newPayment.via,
+      note: newPayment.note || '',
+      billId: newPayment.billId,
+      invoiceId: newPayment.invoiceId,
       documentType: newPayment.billId ? 'VendorBill' : 'CustomerInvoice',
       documentId: newPayment.billId || newPayment.invoiceId,
+      razorpayOrderId: newPayment.razorpayOrderId,
+      razorpayPaymentId: newPayment.razorpayPaymentId,
     }).catch(console.warn);
 
     return newPayment;
@@ -930,24 +1158,24 @@ export const mockDb = {
   // Reporting
   computeAccountBalance: (accountId: string, year: string): number => {
     const entries = mockDb.getJournalEntries();
-    const account = mockDb.getAccounts().find(a => a.id === accountId);
+    const account = mockDb.getAccounts().find(a => a.id === accountId || (a as any)._id === accountId || a.name === accountId);
     if (!account) return 0;
 
     let balance = 0;
     entries.forEach(entry => {
-      if (entry.status === JournalEntryStatus.Posted && entry.date.startsWith(year)) {
-        entry.lines.forEach(line => {
-          if (line.accountId === accountId) {
+      if (entry.status === JournalEntryStatus.Posted && (!year || entry.date.startsWith(year))) {
+        (entry.lines || []).forEach(line => {
+          if (line.accountId === account.id || line.accountId === (account as any)._id || line.accountId === account.name) {
             if ([AccountType.Asset, AccountType.Expenses, AccountType.OtherExpenses, AccountType.Bank, AccountType.Cash].includes(account.type)) {
-              balance += (line.debit - line.credit);
+              balance += ((Number(line.debit) || 0) - (Number(line.credit) || 0));
             } 
             else {
-              balance += (line.credit - line.debit);
+              balance += ((Number(line.credit) || 0) - (Number(line.debit) || 0));
             }
           }
         });
       }
     });
-    return balance;
+    return Math.round(balance * 100) / 100;
   }
 };

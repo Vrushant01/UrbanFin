@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
 import { MasterFormView } from '../../components/master/MasterFormView';
 import { type Account, AccountType } from '../../types';
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
-import { BookOpen } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { BookOpen, Trash2 } from 'lucide-react';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
 const DEFAULT_ACCOUNT: Partial<Account> = {
   name: '',
@@ -15,23 +18,34 @@ const DEFAULT_ACCOUNT: Partial<Account> = {
 export function ChartOfAccountsMaster() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [editingAccount, setEditingAccount] = useState<Partial<Account> | null>(null);
 
-  // Load data
-  useEffect(() => {
-    setAccounts(mockDb.getAccounts());
-  }, [viewMode]);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
-  const filteredAccounts = useMemo(() => {
-    if (!searchTerm) return accounts;
-    const lower = searchTerm.toLowerCase();
-    return accounts.filter(a => 
-      a.name.toLowerCase().includes(lower) || 
-      a.type.toLowerCase().includes(lower)
-    );
-  }, [accounts, searchTerm]);
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const aData = await fetchWithCache<Account[]>(`/api/accounts?search=${encodeURIComponent(query)}`);
+      setAccounts(aData);
+    } catch {
+      setAccounts(mockDb.getAccounts());
+    }
+  }, [debouncedSearch]);
+
+  // Load data & live backend sync
+  useEffect(() => {
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
+
+  const filteredAccounts = accounts;
 
   // Actions
   const handleNew = () => {
@@ -49,7 +63,7 @@ export function ChartOfAccountsMaster() {
     setViewMode('list');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingAccount || !editingAccount.name) return;
 
     if (editingAccount.id) {
@@ -58,9 +72,21 @@ export function ChartOfAccountsMaster() {
       mockDb.addAccount(editingAccount as Omit<Account, 'id'>);
     }
     
-    setAccounts(mockDb.getAccounts());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingAccount(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editingAccount?.id) return;
+    if (window.confirm(`Are you sure you want to delete "${editingAccount.name}"?`)) {
+      mockDb.deleteAccount(editingAccount.id);
+      await mockDb.syncWithBackend();
+      loadData();
+      setViewMode('list');
+      setEditingAccount(null);
+    }
   };
 
   const handleNewFromForm = () => {
@@ -82,7 +108,7 @@ export function ChartOfAccountsMaster() {
         // Simple visual grouping by color based on type
         const isBalanceSheet = [AccountType.Asset, AccountType.Liability, AccountType.Bank, AccountType.Capital, AccountType.Cash].includes(a.type);
         return (
-          <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${isBalanceSheet ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+          <span className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded ${isBalanceSheet ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
             {a.type}
           </span>
         );
@@ -92,11 +118,40 @@ export function ChartOfAccountsMaster() {
 
   const isFormValid = !!(editingAccount?.name);
 
+  const renderFormActions = () => (
+    <div className="flex items-center gap-2">
+      <Button 
+        type="button" 
+        variant="secondary" 
+        onClick={handleNewFromForm}
+      >
+        New
+      </Button>
+      <Button 
+        type="button" 
+        variant="primary"
+        disabled={!isFormValid}
+        onClick={handleSave}
+      >
+        Confirm
+      </Button>
+      {editingAccount?.id && (
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleDelete}
+          className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+        >
+          <Trash2 size={16} /> Delete
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <MasterLayout
       title="Chart of Accounts"
       viewMode={viewMode}
-      onViewModeChange={setViewMode} // Note: Kanban doesn't make much sense for CoA, but allowed by the wrapper. We just don't implement the kanban view prop or we map it to list.
       onNew={handleNew}
       onBack={handleBack}
       searchTerm={searchTerm}
@@ -120,7 +175,7 @@ export function ChartOfAccountsMaster() {
       )}
 
       {viewMode === 'form' && editingAccount && (
-        <MasterFormView onSave={handleSave} onNew={handleNewFromForm} isFormValid={isFormValid}>
+        <MasterFormView renderActions={renderFormActions}>
           <div className="max-w-2xl mx-auto space-y-6">
             <Input 
               label="Account Name" 
@@ -157,3 +212,4 @@ export function ChartOfAccountsMaster() {
     </MasterLayout>
   );
 }
+

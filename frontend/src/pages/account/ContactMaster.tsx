@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
 import { MasterKanbanView } from '../../components/master/MasterKanbanView';
@@ -6,7 +6,11 @@ import { MasterFormView } from '../../components/master/MasterFormView';
 import { type Contact, ContactType, type Address } from '../../types';
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
-import { User, Camera } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { User, Camera, Trash2 } from 'lucide-react';
+
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
 const DEFAULT_ADDRESS: Address = { street: '', city: '', state: '', country: '', pincode: '' };
 const DEFAULT_CONTACT: Partial<Contact> = {
@@ -21,25 +25,35 @@ const DEFAULT_CONTACT: Partial<Contact> = {
 export function ContactMaster() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [editingContact, setEditingContact] = useState<Partial<Contact> | null>(null);
   const [emailError, setEmailError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load data
-  useEffect(() => {
-    setContacts(mockDb.getContacts());
-  }, [viewMode]);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
-  const filteredContacts = useMemo(() => {
-    if (!searchTerm) return contacts;
-    const lower = searchTerm.toLowerCase();
-    return contacts.filter(c => 
-      c.name.toLowerCase().includes(lower) || 
-      c.email.toLowerCase().includes(lower) || 
-      c.phone.toLowerCase().includes(lower)
-    );
-  }, [contacts, searchTerm]);
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const data = await fetchWithCache<Contact[]>(`/api/contacts?search=${encodeURIComponent(query)}`);
+      setContacts(data);
+    } catch {
+      setContacts(mockDb.getContacts());
+    }
+  }, [debouncedSearch]);
+
+  // Load data on view change and debounced search
+  useEffect(() => {
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
+
+  const filteredContacts = contacts;
 
   // Actions
   const handleNew = () => {
@@ -56,10 +70,10 @@ export function ContactMaster() {
 
   const handleBack = () => {
     setEditingContact(null);
-    setViewMode('list'); // Default back to list
+    setViewMode('list');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingContact || !editingContact.name || !editingContact.email) return;
 
     if (!mockDb.checkUniqueContactEmail(editingContact.email, editingContact.id)) {
@@ -73,10 +87,21 @@ export function ContactMaster() {
       mockDb.addContact(editingContact as Omit<Contact, 'id'>);
     }
     
-    // Switch to list view to show the new record
-    setContacts(mockDb.getContacts());
+    await mockDb.syncWithBackend();
+    loadData();
     setViewMode('list');
     setEditingContact(null);
+  };
+
+  const handleDelete = async () => {
+    if (!editingContact?.id) return;
+    if (window.confirm(`Are you sure you want to delete "${editingContact.name}"?`)) {
+      mockDb.deleteContact(editingContact.id);
+      await mockDb.syncWithBackend();
+      loadData();
+      setViewMode('list');
+      setEditingContact(null);
+    }
   };
 
   const handleNewFromForm = () => {
@@ -128,6 +153,36 @@ export function ContactMaster() {
 
   const isFormValid = !!(editingContact?.name && editingContact?.email && !emailError);
 
+  const renderFormActions = () => (
+    <div className="flex items-center gap-2">
+      <Button 
+        type="button" 
+        variant="secondary" 
+        onClick={handleNewFromForm}
+      >
+        New
+      </Button>
+      <Button 
+        type="button" 
+        variant="primary"
+        disabled={!isFormValid}
+        onClick={handleSave}
+      >
+        Confirm
+      </Button>
+      {editingContact?.id && (
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleDelete}
+          className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 ml-2"
+        >
+          <Trash2 size={16} /> Delete
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <MasterLayout
       title="Contacts"
@@ -157,7 +212,7 @@ export function ContactMaster() {
       )}
 
       {viewMode === 'form' && editingContact && (
-        <MasterFormView onSave={handleSave} onNew={handleNewFromForm} isFormValid={isFormValid}>
+        <MasterFormView renderActions={renderFormActions}>
           <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-8">
             {/* Left Col - Image */}
             <div className="flex-shrink-0 flex flex-col items-center">
@@ -293,3 +348,4 @@ export function ContactMaster() {
     </MasterLayout>
   );
 }
+

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { VendorBill, IVendorBill } from '../models/VendorBill.js';
 import { Journal } from '../models/Journal.js';
 import { Account } from '../models/Account.js';
+import { Contact } from '../models/Contact.js';
 import {
   VendorBillStatus,
   JournalType,
@@ -15,7 +16,9 @@ import { cache } from '../utils/cache.js';
 export const getVendorBills = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { search, status, vendorId } = req.query;
-    const cacheKey = `vendor_bills:list:${search || ''}:${status || ''}:${vendorId || ''}`;
+    const hasSearch = !!(search && typeof search === 'string' && search.trim());
+    const limit = hasSearch ? 500 : (Number(req.query.limit) || 120);
+    const cacheKey = `vendor_bills:list:${search || ''}:${status || ''}:${vendorId || ''}:${limit}`;
 
     const cached = cache.get<any[]>(cacheKey);
     if (cached) {
@@ -26,15 +29,34 @@ export const getVendorBills = async (req: Request, res: Response, next: NextFunc
     const filter: any = {};
     if (status) filter.status = status;
     if (vendorId) filter.vendorId = vendorId;
-    if (search && typeof search === 'string' && search.trim()) {
+    if (hasSearch) {
+      const term = (search as string).trim();
+      const matchingVendors = await Contact.find({
+        name: { $regex: term, $options: 'i' },
+      });
+      const vendorIds = matchingVendors.map((v) => v._id.toString());
+
       filter.$or = [
-        { number: { $regex: search.trim(), $options: 'i' } },
-        { billReference: { $regex: search.trim(), $options: 'i' } },
+        { number: { $regex: term, $options: 'i' } },
+        { billReference: { $regex: term, $options: 'i' } },
+        { status: { $regex: term, $options: 'i' } },
+        { vendorId: { $in: vendorIds } },
       ];
     }
 
-    const bills = await VendorBill.find(filter).sort({ createdAt: -1 });
-    const formatted = bills.map((b) => b.toJSON());
+    const bills = await VendorBill.find(filter).sort({ createdAt: -1 }).limit(limit);
+    const vendorIds = Array.from(new Set(bills.map((b) => b.vendorId).filter(Boolean)));
+    const contacts = vendorIds.length > 0 ? await Contact.find({ _id: { $in: vendorIds } }).lean() : [];
+    const contactMap = new Map(contacts.map((c) => [c._id.toString(), c]));
+
+    const formatted = bills.map((b) => {
+      const json: any = b.toJSON();
+      const vend = contactMap.get(b.vendorId);
+      json.vendorName = vend?.name || 'Vendor';
+      json.vendorEmail = vend?.email || '';
+      json.vendorPhone = vend?.phone || '';
+      return json;
+    });
 
     cache.set(cacheKey, formatted, 30);
     res.status(200).json(formatted);
@@ -51,7 +73,16 @@ export const getVendorBillById = async (req: Request, res: Response, next: NextF
       res.status(404).json({ message: 'Vendor Bill not found' });
       return;
     }
-    res.status(200).json(bill.toJSON());
+    const json: any = bill.toJSON();
+    if (bill.vendorId) {
+      const vend = await Contact.findById(bill.vendorId).lean();
+      if (vend) {
+        json.vendorName = vend.name;
+        json.vendorEmail = vend.email;
+        json.vendorPhone = vend.phone;
+      }
+    }
+    res.status(200).json(json);
   } catch (error) {
     next(error);
   }

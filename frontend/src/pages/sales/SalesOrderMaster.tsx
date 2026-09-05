@@ -1,16 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MasterLayout } from '../../components/master/MasterLayout';
 import { MasterListView, type Column } from '../../components/master/MasterListView';
+import { MasterKanbanView } from '../../components/master/MasterKanbanView';
 import { MasterFormView } from '../../components/master/MasterFormView';
 import { 
   type SalesOrder, SalesOrderStatus, type SalesOrderLine, 
+  CustomerInvoiceStatus,
   type Contact, type Product, type AnalyticAccount, ContactType
 } from '../../types';
 import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Plus, Trash2, ShoppingCart, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDebounce } from '../../hooks/useDebounce';
+import { fetchWithCache, clientCache } from '../../utils/clientCache';
+import { calculateGST } from '../../utils/gstUtils';
 
 const DEFAULT_SO: Partial<SalesOrder> = {
   customerId: '',
@@ -23,6 +29,7 @@ export function SalesOrderMaster() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 200);
   
   const [sos, setSos] = useState<SalesOrder[]>([]);
   const [customers, setCustomers] = useState<Contact[]>([]);
@@ -31,22 +38,44 @@ export function SalesOrderMaster() {
   
   const [editingSO, setEditingSO] = useState<Partial<SalesOrder> | null>(null);
 
-  // Load data
-  useEffect(() => {
-    setSos(mockDb.getSalesOrders());
-    setCustomers(mockDb.getContacts().filter(c => c.type === ContactType.Customer || c.type === ContactType.Both));
-    setProducts(mockDb.getProducts());
-    setAnalytics(mockDb.getAnalyticAccounts());
-  }, [viewMode]);
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('urbanfin_jwt_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
-  const filteredSos = useMemo(() => {
-    if (!searchTerm) return sos;
-    const lower = searchTerm.toLowerCase();
-    return sos.filter(s => 
-      s.number?.toLowerCase().includes(lower) || 
-      s.status.toLowerCase().includes(lower)
-    );
-  }, [sos, searchTerm]);
+  const loadData = useCallback(async (query: string = debouncedSearch) => {
+    try {
+      const soData = await fetchWithCache<SalesOrder[]>(`/api/sales-orders?search=${encodeURIComponent(query)}`);
+      setSos(soData);
+    } catch {
+      setSos(mockDb.getSalesOrders());
+    }
+
+    try {
+      const cData = await fetchWithCache<Contact[]>('/api/contacts?type=Customer');
+      setCustomers(cData);
+    } catch {
+      setCustomers(mockDb.getContacts().filter(c => c.type === ContactType.Customer || c.type === ContactType.Both));
+    }
+
+    try {
+      const pData = await fetchWithCache<Product[]>('/api/products');
+      setProducts(pData);
+    } catch {
+      setProducts(mockDb.getProducts());
+    }
+
+    setAnalytics(mockDb.getAnalyticAccounts());
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    loadData(debouncedSearch);
+  }, [loadData, debouncedSearch, viewMode]);
+
+  const filteredSos = sos;
 
   // Actions
   const handleNew = () => {
@@ -67,33 +96,98 @@ export function SalesOrderMaster() {
     setViewMode('list');
   };
 
-  const handleSave = (status: SalesOrderStatus = SalesOrderStatus.Draft) => {
+  const handleSave = async (status: SalesOrderStatus = SalesOrderStatus.Draft) => {
     if (!editingSO || !editingSO.customerId) return;
 
     const finalSO = { ...editingSO, status } as SalesOrder;
 
-    if (finalSO.id) {
-      mockDb.updateSalesOrder(finalSO.id, finalSO);
-    } else {
-      mockDb.addSalesOrder(finalSO as Omit<SalesOrder, 'id' | 'number'>);
+    try {
+      if (finalSO.id) {
+        await fetch(`/api/sales-orders/${finalSO.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(finalSO),
+        });
+      } else {
+        await fetch('/api/sales-orders', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(finalSO),
+        });
+      }
+      clientCache.invalidate('GET:/api/sales-orders');
+      clientCache.invalidate('GET:/api/dashboard/summary');
+      await loadData();
+    } catch (e) {
+      if (finalSO.id) {
+        mockDb.updateSalesOrder(finalSO.id, finalSO);
+      } else {
+        mockDb.addSalesOrder(finalSO as Omit<SalesOrder, 'id' | 'number'>);
+      }
+      setSos(mockDb.getSalesOrders());
     }
     
-    setSos(mockDb.getSalesOrders());
     setViewMode('list');
     setEditingSO(null);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!editingSO || !editingSO.id) return;
-    mockDb.updateSalesOrder(editingSO.id, { status: SalesOrderStatus.Cancelled });
-    setSos(mockDb.getSalesOrders());
+    try {
+      await fetch(`/api/sales-orders/${editingSO.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status: SalesOrderStatus.Cancelled }),
+      });
+      clientCache.invalidate('GET:/api/sales-orders');
+      clientCache.invalidate('GET:/api/dashboard/summary');
+      await loadData();
+    } catch {
+      mockDb.updateSalesOrder(editingSO.id, { status: SalesOrderStatus.Cancelled });
+      setSos(mockDb.getSalesOrders());
+    }
     setViewMode('list');
     setEditingSO(null);
   };
 
-  const handleCreateInvoice = () => {
-    if (!editingSO || !editingSO.id) return;
-    navigate(`/sales/invoices/new?fromSo=${editingSO.id}`);
+  const handleCreateInvoice = async () => {
+    if (!editingSO) return;
+
+    try {
+      const invoicePayload = {
+        customerId: editingSO.customerId,
+        invoiceReference: editingSO.number || '',
+        invoiceDate: new Date().toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        soReferenceId: editingSO.id,
+        status: CustomerInvoiceStatus.Draft,
+        lines: (editingSO.lines || []).map((l) => ({
+          productId: l.productId,
+          analyticAccountId: l.analyticAccountId || undefined,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+        })),
+      };
+
+      const res = await fetch('/api/customer-invoices', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(invoicePayload),
+      });
+
+      if (res.ok) {
+        const createdInv = await res.json();
+        clientCache.invalidate('GET:/api/customer-invoices');
+        clientCache.invalidate('GET:/api/dashboard/summary');
+        mockDb.addCustomerInvoice(createdInv);
+        navigate(`/sales/invoices?createdId=${createdInv.id || createdInv._id}`);
+        return;
+      }
+    } catch (e) {
+      console.warn('API create invoice failed, navigating to invoice form', e);
+    }
+
+    navigate(`/sales/invoices?fromSo=${editingSO.id}`);
   };
 
   // Line item manipulation
@@ -142,35 +236,43 @@ export function SalesOrderMaster() {
 
   // List View configuration
   const columns: Column<SalesOrder>[] = [
-    { key: 'number', header: 'SO No.' },
+    { key: 'number', header: 'SO NO.' },
     { 
       key: 'customerId', 
-      header: 'Customer',
+      header: 'CUSTOMER',
       render: (s) => {
         const cust = customers.find(c => c.id === s.customerId);
-        return cust ? cust.name : 'Unknown';
+        return <span className="font-medium text-slate-800">{(s as any).customerName || cust?.name || 'Customer'}</span>;
       }
     },
-    { key: 'date', header: 'Order Date' },
+    { key: 'date', header: 'ORDER DATE' },
     { 
       key: 'total', 
-      header: 'Total',
+      header: 'TOTAL (INCL. GST)',
       render: (s) => {
-        const total = s.lines.reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
-        return <span className="font-semibold text-indigo-700">Rs. {total.toLocaleString()}</span>;
+        const rawTotal = s.lines.reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
+        const { totalWithGst } = calculateGST(rawTotal);
+        return (
+          <div>
+            <div className="font-bold text-slate-900">Rs. {totalWithGst.toLocaleString()}</div>
+            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+              18% GST
+            </span>
+          </div>
+        );
       }
     },
     { 
       key: 'status', 
-      header: 'Status',
+      header: 'STATUS',
       render: (s) => {
-        const colors = {
-          [SalesOrderStatus.Draft]: 'bg-slate-100 text-slate-700',
-          [SalesOrderStatus.Confirmed]: 'bg-emerald-50 text-emerald-700',
-          [SalesOrderStatus.Cancelled]: 'bg-red-50 text-red-700',
+        const colors: Record<string, string> = {
+          [SalesOrderStatus.Draft]: 'bg-slate-100 text-slate-700 border-slate-200',
+          [SalesOrderStatus.Confirmed]: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+          [SalesOrderStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200/80',
         };
         return (
-          <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${colors[s.status]}`}>
+          <span className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-md border ${colors[s.status] || 'bg-slate-100 text-slate-700'}`}>
             {s.status}
           </span>
         );
@@ -226,7 +328,9 @@ export function SalesOrderMaster() {
   };
 
   const isReadonly = editingSO?.status !== SalesOrderStatus.Draft;
-  let totalOrderValue = (editingSO?.lines || []).reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
+  const subtotalUntaxed = (editingSO?.lines || []).reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
+  const gstBreakdown = calculateGST(subtotalUntaxed);
+  const totalOrderValue = gstBreakdown.totalWithGst;
 
   return (
     <MasterLayout
@@ -248,11 +352,57 @@ export function SalesOrderMaster() {
       )}
       
       {viewMode === 'kanban' && (
-        <div className="flex flex-col items-center justify-center h-64 text-slate-500">
-          <ShoppingCart size={48} className="mb-4 text-slate-300" />
-          <p>Kanban view not enabled for Sales Orders.</p>
-          <button onClick={() => setViewMode('list')} className="mt-4 text-indigo-600 hover:underline">Switch to List View</button>
-        </div>
+        <MasterKanbanView
+          data={filteredSos}
+          keyExtractor={s => s.id}
+          onCardClick={handleEdit}
+          renderCard={(so) => {
+            const cust = customers.find(c => c.id === so.customerId);
+            const subtotal = (so.lines || []).reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+            const gstInfo = calculateGST(subtotal);
+            const lineCount = (so.lines || []).length;
+
+            return (
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                      {so.number || 'Draft'}
+                    </span>
+                    <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${
+                      so.status === SalesOrderStatus.Confirmed
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : so.status === SalesOrderStatus.Cancelled
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
+                      {so.status}
+                    </span>
+                  </div>
+
+                  <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors text-base truncate">
+                    {(so as any).customerName || cust?.name || 'Customer'}
+                  </div>
+                  {((so as any).customerEmail || cust?.email) && (
+                    <div className="text-xs text-slate-400 truncate mt-0.5">{(so as any).customerEmail || cust?.email}</div>
+                  )}
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span>{lineCount} {lineCount === 1 ? 'Product' : 'Products'}</span>
+                    <span>{so.date}</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-baseline justify-between">
+                  <span className="text-xs font-medium text-slate-400">Total (Incl. GST)</span>
+                  <span className="font-bold text-base text-slate-900">
+                    Rs. {gstInfo.totalWithGst.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            );
+          }}
+        />
       )}
 
       {viewMode === 'form' && editingSO && (
@@ -275,19 +425,20 @@ export function SalesOrderMaster() {
             {/* Header Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name</label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                <SearchableSelect
+                  label="Customer Name"
+                  required
+                  placeholder="Search customer by name or email..."
                   value={editingSO.customerId || ''}
                   disabled={isReadonly}
-                  onChange={e => setEditingSO({ ...editingSO, customerId: e.target.value })}
-                  required
-                >
-                  <option value="" disabled>Select Customer</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  asyncSearchUrl="/api/contacts?type=Customer"
+                  options={customers.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    subtitle: c.email || c.phone,
+                  }))}
+                  onChange={(val) => setEditingSO({ ...editingSO, customerId: val })}
+                />
               </div>
 
               <div>
@@ -306,7 +457,7 @@ export function SalesOrderMaster() {
             {/* Line Items */}
             <div className="mt-8">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Products</h3>
-              <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white">
+              <div className="border border-slate-200 rounded-xl overflow-visible bg-white">
                 <table className="w-full text-left text-sm min-w-max">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
                     <tr>
@@ -334,27 +485,41 @@ export function SalesOrderMaster() {
                       return (
                         <tr key={line.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                           <td className="p-2 text-center text-slate-400">{idx + 1}</td>
-                          <td className="p-2">
-                            <select 
-                              className="w-full min-w-[200px] h-8 px-2 border border-slate-300 rounded text-sm disabled:bg-transparent disabled:border-transparent font-medium"
+                          <td className="p-2 min-w-[240px]">
+                            <SearchableSelect
+                              size="sm"
+                              placeholder="Search product..."
                               value={line.productId}
                               disabled={isReadonly}
-                              onChange={e => updateLine(line.id, 'productId', e.target.value)}
-                            >
-                              <option value="" disabled>Select Product...</option>
-                              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                              asyncSearchUrl="/api/products"
+                              options={products.map(p => ({
+                                id: p.id,
+                                name: p.name,
+                                subtitle: p.categoryName || p.type,
+                                price: p.salesPrice,
+                              }))}
+                              onChange={(val, opt) => {
+                                updateLine(line.id, 'productId', val);
+                                if (opt?.price !== undefined) {
+                                  updateLine(line.id, 'unitPrice', opt.price);
+                                }
+                              }}
+                            />
                           </td>
-                          <td className="p-2">
-                            <select 
-                              className="w-full min-w-[150px] h-8 px-2 border border-slate-300 rounded text-sm disabled:bg-transparent disabled:border-transparent font-medium"
+                          <td className="p-2 min-w-[170px]">
+                            <SearchableSelect
+                              size="sm"
+                              placeholder="(None)"
                               value={line.analyticAccountId || ''}
                               disabled={isReadonly}
-                              onChange={e => updateLine(line.id, 'analyticAccountId', e.target.value)}
-                            >
-                              <option value="">(None)</option>
-                              {analytics.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </select>
+                              asyncSearchUrl="/api/analytics"
+                              options={analytics.map(a => ({
+                                id: a.id,
+                                name: a.name,
+                                subtitle: a.type,
+                              }))}
+                              onChange={(val) => updateLine(line.id, 'analyticAccountId', val)}
+                            />
                           </td>
                           <td className="p-2">
                             <input 
@@ -398,13 +563,40 @@ export function SalesOrderMaster() {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={5} className="p-4 text-right font-medium text-slate-600 border-t border-slate-200">
-                        Total Amount
+                      <td colSpan={4} className="p-3 text-right font-medium text-slate-600 border-t border-slate-200">
+                        Untaxed Subtotal:
                       </td>
-                      <td className="p-4 text-right font-bold text-lg text-indigo-700 border-t border-slate-200 bg-indigo-50/30">
-                        Rs. {totalOrderValue.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      <td className="p-3 text-right font-semibold text-slate-800 border-t border-slate-200">
+                        Rs. {subtotalUntaxed.toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
                       {!isReadonly && <td className="border-t border-slate-200"></td>}
+                    </tr>
+                    <tr className="bg-indigo-50/20 text-xs text-indigo-900">
+                      <td colSpan={4} className="p-2 text-right font-medium">
+                        Central GST (CGST 9%):
+                      </td>
+                      <td className="p-2 text-right font-semibold">
+                        + Rs. {gstBreakdown.cgst.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      </td>
+                      {!isReadonly && <td></td>}
+                    </tr>
+                    <tr className="bg-indigo-50/20 text-xs text-indigo-900">
+                      <td colSpan={4} className="p-2 text-right font-medium">
+                        State GST (SGST 9%):
+                      </td>
+                      <td className="p-2 text-right font-semibold">
+                        + Rs. {gstBreakdown.sgst.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      </td>
+                      {!isReadonly && <td></td>}
+                    </tr>
+                    <tr>
+                      <td colSpan={4} className="p-4 text-right font-bold text-slate-800 border-t-2 border-indigo-200 bg-indigo-50/40">
+                        Grand Total (Incl. 18% GST):
+                      </td>
+                      <td className="p-4 text-right font-black text-lg text-indigo-700 border-t-2 border-indigo-200 bg-indigo-50/40">
+                        Rs. {totalOrderValue.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      </td>
+                      {!isReadonly && <td className="border-t-2 border-indigo-200 bg-indigo-50/40"></td>}
                     </tr>
                   </tfoot>
                 </table>
