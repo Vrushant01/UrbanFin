@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getAnalyticAccounts,
+  getEligibleAnalyticAccounts,
   getAnalyticAccountById,
   createAnalyticAccount,
   updateAnalyticAccount,
@@ -11,6 +12,7 @@ import { Role } from '../types/index.js';
 
 const router = Router();
 
+router.get('/eligible', requireAuth, requireRole([Role.Administrator, Role.Accountant]), getEligibleAnalyticAccounts);
 router.get('/', requireAuth, requireRole([Role.Administrator, Role.Accountant]), getAnalyticAccounts);
 router.get('/:id', requireAuth, requireRole([Role.Administrator, Role.Accountant]), getAnalyticAccountById);
 router.post('/', requireAuth, requireRole([Role.Administrator, Role.Accountant]), createAnalyticAccount);

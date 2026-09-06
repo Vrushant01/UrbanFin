@@ -7,22 +7,49 @@ export function ForgotPassword() {
   const [identifier, setIdentifier] = useState('');
   const [isSent, setIsSent] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (identifier.trim()) {
+    if (!identifier.trim()) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ identifier: identifier.trim() }),
+      });
+
+      if (res.ok) {
+        setIsSent(true);
+      } else {
+        const data = await res.json();
+        setError(data.message || 'An error occurred.');
+      }
+    } catch (err) {
+      console.error('Failed to request password reset', err);
+      // In offline mode (mockDB), just pretend it succeeded since we don't have an SMTP server locally in the browser
       setIsSent(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg border border-slate-100">
+      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-md border border-slate-200/80">
         <div>
           <h2 className="mt-2 text-center text-3xl font-extrabold text-slate-900">
             Reset Password
           </h2>
           <p className="mt-2 text-center text-sm text-slate-600">
-            Urban Furniture Accounting
+            UrbanFin ERP
           </p>
         </div>
         
@@ -40,9 +67,22 @@ export function ForgotPassword() {
               placeholder="Enter ID or Email"
             />
 
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200">
+                {error}
+              </div>
+            )}
+
             <div>
-              <Button type="submit" className="w-full" size="lg">
-                SEND RESET LINK
+              <Button type="submit" className="w-full flex justify-center items-center gap-2" size="lg" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white rounded-full"></div>
+                    SENDING...
+                  </>
+                ) : (
+                  'SEND RESET LINK'
+                )}
               </Button>
             </div>
           </form>
@@ -56,7 +96,7 @@ export function ForgotPassword() {
         )}
 
         <div className="text-center mt-6 text-sm">
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 flex justify-center items-center gap-1">
+          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700 transition-colors flex justify-center items-center gap-1">
             &larr; Back to Login
           </Link>
         </div>

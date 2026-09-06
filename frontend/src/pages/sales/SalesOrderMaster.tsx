@@ -35,6 +35,7 @@ export function SalesOrderMaster() {
   const [customers, setCustomers] = useState<Contact[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticAccount[]>([]);
+  const [eligibleAnalytics, setEligibleAnalytics] = useState<AnalyticAccount[]>([]);
   
   const [editingSO, setEditingSO] = useState<Partial<SalesOrder> | null>(null);
 
@@ -68,7 +69,19 @@ export function SalesOrderMaster() {
       setProducts(mockDb.getProducts());
     }
 
-    setAnalytics(mockDb.getAnalyticAccounts());
+    try {
+      const aData = await fetchWithCache<AnalyticAccount[]>('/api/analytics');
+      setAnalytics(aData);
+    } catch {
+      setAnalytics(mockDb.getAnalyticAccounts());
+    }
+
+    try {
+      const eData = await fetchWithCache<AnalyticAccount[]>('/api/analytics/eligible');
+      setEligibleAnalytics(eData);
+    } catch {
+      setEligibleAnalytics(mockDb.getEligibleAnalyticAccounts());
+    }
   }, [debouncedSearch]);
 
   useEffect(() => {
@@ -255,7 +268,7 @@ export function SalesOrderMaster() {
         return (
           <div>
             <div className="font-bold text-slate-900">Rs. {totalWithGst.toLocaleString()}</div>
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
               18% GST
             </span>
           </div>
@@ -363,7 +376,7 @@ export function SalesOrderMaster() {
             const lineCount = (so.lines || []).length;
 
             return (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+              <div className="bg-white p-5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -512,8 +525,8 @@ export function SalesOrderMaster() {
                               placeholder="(None)"
                               value={line.analyticAccountId || ''}
                               disabled={isReadonly}
-                              asyncSearchUrl="/api/analytics"
-                              options={analytics.map(a => ({
+                              asyncSearchUrl="/api/analytics/eligible"
+                              options={eligibleAnalytics.map(a => ({
                                 id: a.id,
                                 name: a.name,
                                 subtitle: a.type,
@@ -571,7 +584,7 @@ export function SalesOrderMaster() {
                       </td>
                       {!isReadonly && <td className="border-t border-slate-200"></td>}
                     </tr>
-                    <tr className="bg-indigo-50/20 text-xs text-indigo-900">
+                    <tr className="bg-blue-50/20 text-xs text-blue-900">
                       <td colSpan={4} className="p-2 text-right font-medium">
                         Central GST (CGST 9%):
                       </td>
@@ -580,7 +593,7 @@ export function SalesOrderMaster() {
                       </td>
                       {!isReadonly && <td></td>}
                     </tr>
-                    <tr className="bg-indigo-50/20 text-xs text-indigo-900">
+                    <tr className="bg-blue-50/20 text-xs text-blue-900">
                       <td colSpan={4} className="p-2 text-right font-medium">
                         State GST (SGST 9%):
                       </td>
@@ -590,13 +603,13 @@ export function SalesOrderMaster() {
                       {!isReadonly && <td></td>}
                     </tr>
                     <tr>
-                      <td colSpan={4} className="p-4 text-right font-bold text-slate-800 border-t-2 border-indigo-200 bg-indigo-50/40">
+                      <td colSpan={4} className="p-4 text-right font-bold text-slate-800 border-t-2 border-blue-200 bg-blue-50/40">
                         Grand Total (Incl. 18% GST):
                       </td>
-                      <td className="p-4 text-right font-black text-lg text-indigo-700 border-t-2 border-indigo-200 bg-indigo-50/40">
+                      <td className="p-4 text-right font-black text-lg text-blue-700 border-t-2 border-blue-200 bg-blue-50/40">
                         Rs. {totalOrderValue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
-                      {!isReadonly && <td className="border-t-2 border-indigo-200 bg-indigo-50/40"></td>}
+                      {!isReadonly && <td className="border-t-2 border-blue-200 bg-blue-50/40"></td>}
                     </tr>
                   </tfoot>
                 </table>
@@ -604,7 +617,7 @@ export function SalesOrderMaster() {
               
               {!isReadonly && (
                 <div className="mt-3">
-                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-blue-600 bg-blue-50 hover:bg-blue-100">
                     <Plus size={16} /> Add Product
                   </Button>
                 </div>

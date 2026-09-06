@@ -12,6 +12,9 @@ export interface IUser extends Document {
   contactId?: string;
   isSuspended: boolean;
   isMasterAdmin: boolean;
+  resetTokenHash?: string;
+  resetTokenExpiresAt?: Date;
+  resetTokenUsedAt?: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -60,6 +63,18 @@ const userSchema = new Schema<IUser>(
     isMasterAdmin: {
       type: Boolean,
       default: false,
+    },
+    resetTokenHash: {
+      type: String,
+      default: undefined,
+    },
+    resetTokenExpiresAt: {
+      type: Date,
+      default: undefined,
+    },
+    resetTokenUsedAt: {
+      type: Date,
+      default: undefined,
     },
   },
   {

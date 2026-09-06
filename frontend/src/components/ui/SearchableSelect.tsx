@@ -247,7 +247,7 @@ export function SearchableSelect({
       <div
         className={`relative flex items-center w-full rounded-md border bg-white transition-all shadow-sm
           ${disabled ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed' : 'border-slate-300 hover:border-slate-400'}
-          ${isOpen ? 'ring-2 ring-indigo-500/20 border-indigo-600' : ''}
+          ${isOpen ? 'ring-2 ring-blue-500/20 border-blue-600' : ''}
           ${error ? 'border-red-500 ring-2 ring-red-500/20' : ''}
         `}
       >
@@ -281,7 +281,7 @@ export function SearchableSelect({
 
         <div className="absolute right-2 flex items-center gap-1">
           {isLoading && (
-            <Loader2 className="animate-spin text-indigo-500" size={size === 'sm' ? 14 : 16} />
+            <Loader2 className="animate-spin text-blue-500" size={size === 'sm' ? 14 : 16} />
           )}
 
           {allowClear && !disabled && value && !isLoading && (
@@ -310,7 +310,7 @@ export function SearchableSelect({
           >
             <ChevronDown
               size={size === 'sm' ? 14 : 16}
-              className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-indigo-600' : ''}`}
+              className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600' : ''}`}
             />
           </button>
         </div>
@@ -318,12 +318,12 @@ export function SearchableSelect({
 
       {/* Floating Dropdown Menu */}
       {isOpen && !disabled && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-lg border border-slate-200 shadow-xl overflow-hidden animate-in fade-in-50 duration-100 min-w-[240px]">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-lg border border-slate-200 shadow-md overflow-hidden animate-in fade-in-50 duration-100 min-w-[240px]">
           {/* Subtle Live Search Status Header */}
           {asyncSearchUrl && (
             <div className="px-3 py-1.5 bg-slate-50/80 border-b border-slate-100 text-[11px] font-medium text-slate-500 flex items-center justify-between">
               <span>{isTyping && inputValue.trim() ? `Searching for "${inputValue}"...` : 'Type to search live database'}</span>
-              {isLoading && <span className="text-indigo-600 font-semibold flex items-center gap-1">Live Query...</span>}
+              {isLoading && <span className="text-blue-600 font-semibold flex items-center gap-1">Live Query...</span>}
             </div>
           )}
 
@@ -335,7 +335,7 @@ export function SearchableSelect({
             {displayOptions.length === 0 ? (
               <li className="px-4 py-6 text-center text-xs text-slate-400">
                 {isLoading ? (
-                  <div className="flex items-center justify-center gap-2 text-indigo-600">
+                  <div className="flex items-center justify-center gap-2 text-blue-600">
                     <Loader2 className="animate-spin" size={16} />
                     <span>Searching database...</span>
                   </div>
@@ -359,8 +359,8 @@ export function SearchableSelect({
                     onClick={() => handleSelect(opt)}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     className={`px-3 py-2 text-xs md:text-sm rounded-md cursor-pointer flex items-center justify-between transition-colors
-                      ${isHighlighted ? 'bg-indigo-50/80 text-indigo-900' : 'text-slate-700 hover:bg-slate-50'}
-                      ${isSelected ? 'font-semibold bg-indigo-50 text-indigo-700' : ''}
+                      ${isHighlighted ? 'bg-blue-50/80 text-blue-900' : 'text-slate-700 hover:bg-slate-50'}
+                      ${isSelected ? 'font-semibold bg-blue-50 text-blue-700' : ''}
                     `}
                   >
                     <div className="flex flex-col min-w-0 pr-2">
@@ -386,7 +386,7 @@ export function SearchableSelect({
                         </span>
                       )}
                       {isSelected && (
-                        <Check size={16} className="text-indigo-600 shrink-0" />
+                        <Check size={16} className="text-blue-600 shrink-0" />
                       )}
                     </div>
                   </li>

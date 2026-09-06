@@ -61,7 +61,54 @@ export const getJournalEntryById = async (req: Request, res: Response, next: Nex
       res.status(404).json({ message: 'Journal entry not found' });
       return;
     }
-    res.status(200).json(entry.toJSON());
+    const json: any = entry.toJSON();
+
+    // Enrich with partner name
+    if (entry.partnerId) {
+      const partner = await Contact.findById(entry.partnerId).lean();
+      if (partner) {
+        json.partnerName = partner.name;
+      }
+    }
+
+    // Enrich with journal name
+    if (entry.journalId) {
+      const journal = await Journal.findById(entry.journalId).lean();
+      if (journal) {
+        json.journalName = journal.name;
+      }
+    }
+
+    // Enrich with source document label
+    if (entry.sourceDocument?.model && entry.sourceDocument?.id) {
+      try {
+        if (entry.sourceDocument.model === 'CustomerInvoice') {
+          const { CustomerInvoice } = await import('../models/CustomerInvoice.js');
+          const inv = await CustomerInvoice.findById(entry.sourceDocument.id).lean() as any;
+          if (inv) {
+            json.sourceLabel = `Customer Invoice ${inv.number}`;
+            json.sourceNumber = inv.number;
+          }
+        } else if (entry.sourceDocument.model === 'VendorBill') {
+          const { VendorBill } = await import('../models/VendorBill.js');
+          const bill = await VendorBill.findById(entry.sourceDocument.id).lean() as any;
+          if (bill) {
+            json.sourceLabel = `Vendor Bill ${bill.number}`;
+            json.sourceNumber = bill.number;
+          }
+        } else if (entry.sourceDocument.model === 'Payment') {
+          const { Payment } = await import('../models/Payment.js');
+          const pay = await Payment.findById(entry.sourceDocument.id).lean() as any;
+          if (pay) {
+            json.sourceLabel = `Payment (${pay.type}) — ${pay.via} — Rs. ${pay.amount}`;
+          }
+        }
+      } catch (sourceErr) {
+        console.warn('[JournalEntry] Could not enrich source document:', sourceErr);
+      }
+    }
+
+    res.status(200).json(json);
   } catch (error) {
     next(error);
   }

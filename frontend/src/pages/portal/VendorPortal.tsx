@@ -257,16 +257,16 @@ export function VendorPortal() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 antialiased flex flex-col">
       {/* Top Navbar */}
-      <header className="bg-white border-b border-slate-200/90 shadow-2xs sticky top-0 z-30">
+      <header className="bg-white border-b border-slate-200/90 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-600 to-blue-600 text-white font-black flex items-center justify-center shadow-md">
               <Store size={20} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-slate-900 text-lg tracking-tight">UrbanFin Vendor Portal</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
                   Verified Supplier
                 </span>
               </div>
@@ -282,7 +282,7 @@ export function VendorPortal() {
               disabled={loading}
               className="gap-1.5 text-xs font-semibold"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin text-purple-600' : ''} />
+              <RefreshCw size={14} className={loading ? 'animate-spin text-slate-600' : ''} />
               <span>Refresh</span>
             </Button>
             <Button
@@ -325,16 +325,16 @@ export function VendorPortal() {
 
         {/* Metric Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-purple-100 shadow-2xs">
+          <div className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">Catalog Products</span>
-              <Package size={18} className="text-purple-500" />
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Catalog Products</span>
+              <Package size={18} className="text-slate-500" />
             </div>
             <div className="text-2xl font-black text-slate-900 mt-2">{products.length}</div>
             <p className="text-xs text-slate-400 mt-1">{metrics.totalStock} total units in stock</p>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-2xs">
+          <div className="bg-white p-5 rounded-xl border border-amber-100 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">Pending Orders</span>
               <ShoppingCart size={18} className="text-amber-500" />
@@ -343,18 +343,18 @@ export function VendorPortal() {
             <p className="text-xs text-slate-400 mt-1">Awaiting your acceptance</p>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-indigo-100 shadow-2xs">
+          <div className="bg-white p-5 rounded-xl border border-blue-100 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Billed</span>
-              <DollarSign size={18} className="text-indigo-500" />
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Total Billed</span>
+              <DollarSign size={18} className="text-blue-500" />
             </div>
-            <div className="text-2xl font-black text-indigo-900 mt-2">
+            <div className="text-2xl font-black text-blue-900 mt-2">
               ₹{metrics.totalBilled.toLocaleString()}
             </div>
             <p className="text-xs text-slate-400 mt-1">{bills.length} generated bills</p>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-2xs">
+          <div className="bg-white p-5 rounded-xl border border-emerald-100 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Settled / Paid</span>
               <CheckCheck size={18} className="text-emerald-500" />
@@ -367,12 +367,12 @@ export function VendorPortal() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-white p-2 rounded-2xl border border-slate-200/90 shadow-2xs flex gap-2">
+        <div className="bg-white p-2 rounded-xl border border-slate-200/90 shadow-sm flex gap-2">
           <button
             onClick={() => setActiveTab('products')}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'products'
-                ? 'bg-purple-600 text-white shadow-sm'
+                ? 'bg-slate-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
@@ -384,7 +384,7 @@ export function VendorPortal() {
             onClick={() => setActiveTab('orders')}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer relative ${
               activeTab === 'orders'
-                ? 'bg-purple-600 text-white shadow-sm'
+                ? 'bg-slate-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
@@ -399,7 +399,7 @@ export function VendorPortal() {
             onClick={() => setActiveTab('bills')}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'bills'
-                ? 'bg-purple-600 text-white shadow-sm'
+                ? 'bg-slate-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
@@ -419,14 +419,14 @@ export function VendorPortal() {
               <Button
                 variant="primary"
                 onClick={handleOpenAddProduct}
-                className="bg-purple-600 hover:bg-purple-700 text-white gap-2 shadow-xs"
+                className="bg-slate-600 hover:bg-slate-700 text-white gap-2 shadow-sm"
               >
                 <Plus size={16} />
                 <span>Add New Product</span>
               </Button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50/90 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <tr>
@@ -449,7 +449,7 @@ export function VendorPortal() {
                       <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-4 px-6">
                           <div className="font-bold text-slate-900">{p.name}</div>
-                          <div className="text-xs text-purple-600 font-semibold">SKU: {p.id.slice(-6).toUpperCase()}</div>
+                          <div className="text-xs text-slate-600 font-semibold">SKU: {p.id.slice(-6).toUpperCase()}</div>
                         </td>
                         <td className="py-4 px-6 font-bold text-slate-900">
                           ₹{p.price.toLocaleString()}
@@ -469,7 +469,7 @@ export function VendorPortal() {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => handleOpenEditProduct(p)}
-                              className="p-1.5 text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                              className="p-1.5 text-slate-500 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
                               title="Edit product"
                             >
                               <Edit size={16} />
@@ -501,7 +501,7 @@ export function VendorPortal() {
             </div>
 
             {orders.length === 0 ? (
-              <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400">
+              <div className="bg-white p-12 text-center rounded-xl border border-slate-200 text-slate-400">
                 No incoming purchase order requests at this time.
               </div>
             ) : (
@@ -512,7 +512,7 @@ export function VendorPortal() {
                   const isCancelled = order.status === 'Cancelled';
 
                   return (
-                    <div key={order.id} className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+                    <div key={order.id} className="bg-white p-6 rounded-xl border border-slate-200/90 shadow-sm space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
                         <div>
                           <div className="flex items-center gap-2">
@@ -530,7 +530,7 @@ export function VendorPortal() {
 
                         <div className="text-right">
                           <div className="text-xs text-slate-400 uppercase font-bold">Total Order Value</div>
-                          <div className="text-xl font-black text-indigo-600">₹{order.total.toLocaleString()}</div>
+                          <div className="text-xl font-black text-blue-600">₹{order.total.toLocaleString()}</div>
                         </div>
                       </div>
 
@@ -574,7 +574,7 @@ export function VendorPortal() {
                             variant="primary"
                             size="sm"
                             onClick={() => handleAcceptOrder(order.id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-xs"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-sm"
                           >
                             <CheckCircle size={15} />
                             <span>Accept Order & Generate Bill</span>
@@ -597,7 +597,7 @@ export function VendorPortal() {
               <p className="text-xs text-slate-500">Track bills generated from accepted purchase orders and their settlement status.</p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50/90 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <tr>
@@ -658,10 +658,10 @@ export function VendorPortal() {
       {/* Add / Edit Product Modal */}
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                <div className="w-9 h-9 rounded-xl bg-slate-600 text-white flex items-center justify-center shadow-sm">
                   <Package size={18} />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">
@@ -716,7 +716,7 @@ export function VendorPortal() {
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                   placeholder="Material, warranty, specifications, etc."
-                  className="w-full p-3 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full p-3 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
               </div>
 
@@ -731,7 +731,7 @@ export function VendorPortal() {
                 <Button
                   type="submit"
                   variant="primary"
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  className="bg-slate-600 hover:bg-slate-700 text-white"
                 >
                   {editingProduct ? 'Save Changes' : 'Add to Catalog'}
                 </Button>

@@ -9,6 +9,7 @@ import { Role } from './types';
 import { Login } from './pages/auth/Login';
 import { SignUp } from './pages/auth/SignUp';
 import { ForgotPassword } from './pages/auth/ForgotPassword';
+import { ResetPassword } from './pages/auth/ResetPassword';
 import { CreateUser } from './pages/admin/CreateUser';
 import { UserManagement } from './pages/admin/UserManagement';
 import { AppDashboard } from './pages/dashboard/AppDashboard';
@@ -40,6 +41,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Routes for Management (MasterAdmin, Admin, SubAdmin, Accountant) */}
           <Route
@@ -96,7 +98,6 @@ function App() {
               </Route>
               <Route path="/report">
                 <Route index element={<Navigate to="/report/profit-and-loss" replace />} />
-                <Route path="budget" element={<BudgetMaster />} />
                 <Route path="profit-and-loss" element={<ProfitAndLossReport />} />
                 <Route path="balance-sheet" element={<BalanceSheet />} />
                 <Route path="*" element={<div className="p-4 bg-white rounded-lg border shadow-sm">Report Placeholder</div>} />

@@ -408,7 +408,7 @@ export function CustomerInvoiceMaster() {
         return (
           <div>
             <div className="font-bold text-slate-900">Rs. {totalWithGst.toLocaleString()}</div>
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
               18% GST
             </span>
           </div>
@@ -436,7 +436,7 @@ export function CustomerInvoiceMaster() {
             </span>
             {i.paymentRequested && i.status !== CustomerInvoiceStatus.Paid && (
               <div>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-50 text-slate-700 border border-slate-200">
                   <Send size={10} /> Request Sent
                 </span>
               </div>
@@ -456,21 +456,13 @@ export function CustomerInvoiceMaster() {
           <Button type="button" variant="secondary" onClick={() => handleSave(CustomerInvoiceStatus.Draft)}>
             Save Draft
           </Button>
-          <Button
-            type="button"
-            variant="primary"
-            disabled={!editingInvoice.lines?.length || !editingInvoice.customerId}
-            onClick={() => handleSave(CustomerInvoiceStatus.Confirmed)}
-          >
-            Confirm Invoice
-          </Button>
           {(editingInvoice.lines?.length || 0) > 0 && editingInvoice.customerId && amountDue > 0 && (
             <Button
               type="button"
-              variant="outline"
+              variant="primary"
               disabled={isRequestingPayment}
               onClick={handleSendPaymentRequest}
-              className="gap-2 bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+              className="gap-2"
             >
               <Send size={15} />
               {isRequestingPayment ? 'Sending...' : 'Confirm & Send Payment Request'}
@@ -493,8 +485,8 @@ export function CustomerInvoiceMaster() {
               onClick={handleSendPaymentRequest}
               className={`gap-2 ${
                 editingInvoice.paymentRequested
-                  ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
-                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                  ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
               }`}
             >
               <Send size={15} />
@@ -506,16 +498,6 @@ export function CustomerInvoiceMaster() {
             </Button>
           )}
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            alert('Mock: Invoice sent to customer successfully!');
-          }}
-          className="gap-2"
-        >
-          <Printer size={16} /> Print / Send
-        </Button>
 
         {(editingInvoice.status === CustomerInvoiceStatus.Confirmed ||
           editingInvoice.status === CustomerInvoiceStatus.PartiallyPaid) &&
@@ -570,7 +552,7 @@ export function CustomerInvoiceMaster() {
             const due = totalWithGst - (inv.amountPaid || 0);
 
             return (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+              <div className="bg-white p-5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -601,7 +583,7 @@ export function CustomerInvoiceMaster() {
                   )}
 
                   {inv.paymentRequested && inv.status !== CustomerInvoiceStatus.Paid && (
-                    <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded-lg border border-purple-200">
+                    <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
                       <Send size={11} /> Payment Request Sent
                     </div>
                   )}
@@ -636,7 +618,7 @@ export function CustomerInvoiceMaster() {
         <MasterFormView renderActions={renderFormActions}>
           <div className="max-w-6xl mx-auto space-y-6">
             {paymentNotice && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center gap-3 shadow-xs animate-fadeIn">
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center gap-3 shadow-sm animate-fadeIn">
                 <CheckCircle className="text-emerald-600 flex-shrink-0" size={20} />
                 <div className="font-medium text-sm">{paymentNotice}</div>
               </div>
@@ -647,7 +629,7 @@ export function CustomerInvoiceMaster() {
               <div className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                 {editingInvoice.number || 'New Customer Invoice'}
                 {originatingSo && (
-                  <span className="text-sm font-normal text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1 cursor-pointer hover:bg-indigo-100 transition-colors">
+                  <span className="text-sm font-normal text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1 cursor-pointer hover:bg-blue-100 transition-colors">
                     <Link to={`/sales/orders`} className="flex items-center gap-1">
                       From SO: {originatingSo.number} <ArrowRight size={14} />
                     </Link>
@@ -657,7 +639,7 @@ export function CustomerInvoiceMaster() {
 
               <div className="flex items-center gap-2">
                 {editingInvoice.paymentRequested && editingInvoice.status !== CustomerInvoiceStatus.Paid && (
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-200">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
                     <Send size={13} /> Payment Request Sent
                   </span>
                 )}
@@ -824,7 +806,7 @@ export function CustomerInvoiceMaster() {
                                 <button 
                                   title="View Budget Report"
                                   onClick={() => openBudgetReport(line.analyticAccountId!)}
-                                  className="text-slate-400 hover:text-indigo-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="text-slate-400 hover:text-blue-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                   <ExternalLink size={14} />
                                 </button>
@@ -876,7 +858,7 @@ export function CustomerInvoiceMaster() {
               
               {!isReadonly && (
                 <div className="mt-3">
-                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-blue-600 bg-blue-50 hover:bg-blue-100">
                     <Plus size={16} /> Add Line
                   </Button>
                 </div>
@@ -885,21 +867,21 @@ export function CustomerInvoiceMaster() {
 
             {/* Totals Block with GST Breakdown */}
             <div className="flex justify-end pt-4">
-              <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+              <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <div className="p-4 space-y-2.5 text-sm">
                   <div className="flex justify-between text-slate-600">
                     <span>Untaxed Subtotal</span>
                     <span className="font-semibold text-slate-800">Rs. {subtotalUntaxed.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
 
-                  <div className="flex justify-between text-slate-600 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg border border-indigo-100/60">
-                    <span className="text-indigo-950 font-medium">Central GST (CGST 9%)</span>
-                    <span className="font-bold text-indigo-900">+ Rs. {gstBreakdown.cgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  <div className="flex justify-between text-slate-600 bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100/60">
+                    <span className="text-blue-950 font-medium">Central GST (CGST 9%)</span>
+                    <span className="font-bold text-blue-900">+ Rs. {gstBreakdown.cgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
 
-                  <div className="flex justify-between text-slate-600 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg border border-indigo-100/60">
-                    <span className="text-indigo-950 font-medium">State GST (SGST 9%)</span>
-                    <span className="font-bold text-indigo-900">+ Rs. {gstBreakdown.sgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  <div className="flex justify-between text-slate-600 bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100/60">
+                    <span className="text-blue-950 font-medium">State GST (SGST 9%)</span>
+                    <span className="font-bold text-blue-900">+ Rs. {gstBreakdown.sgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
 
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-base">
@@ -920,7 +902,7 @@ export function CustomerInvoiceMaster() {
                   
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-lg">
                     <span className="font-bold text-slate-800">Amount Due</span>
-                    <span className={`font-black ${amountDue <= 0 ? 'text-emerald-600' : 'text-indigo-700'}`}>
+                    <span className={`font-black ${amountDue <= 0 ? 'text-emerald-600' : 'text-blue-700'}`}>
                       Rs. {amountDue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </span>
                   </div>

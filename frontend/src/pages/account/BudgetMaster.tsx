@@ -296,11 +296,11 @@ export function BudgetMaster() {
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col h-full p-5 relative group">
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
               <Target size={24} />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-indigo-600 transition-colors">{b.name}</h3>
+              <h3 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-blue-600 transition-colors">{b.name}</h3>
               <span className={`inline-block px-2 py-0.5 mt-1 text-[10px] font-bold uppercase tracking-wider rounded ${colors[b.status]}`}>
                 {b.status}
               </span>
@@ -339,14 +339,6 @@ export function BudgetMaster() {
     
     return (
       <div className="flex items-center gap-2">
-        <Button 
-          type="button" 
-          variant="secondary" 
-          onClick={handleNew}
-        >
-          New
-        </Button>
-
         {editingBudget.status === BudgetStatus.Confirmed && (
           <>
             <Button type="button" variant="outline" onClick={handleCancel} className="text-red-600 border-red-200 hover:bg-red-50">
@@ -433,7 +425,7 @@ export function BudgetMaster() {
               <div className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                 {editingBudget.name || 'New Budget'}
                 {revisionOfOriginal && (
-                  <span className="text-sm font-normal text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1 cursor-pointer hover:bg-indigo-100 transition-colors" onClick={() => handleEdit(revisionOfOriginal)}>
+                  <span className="text-sm font-normal text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1 cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => handleEdit(revisionOfOriginal)}>
                     Revision of: {revisionOfOriginal.name} <ArrowRight size={14} />
                   </span>
                 )}
@@ -513,9 +505,9 @@ export function BudgetMaster() {
                       <th className="p-3">Analytic Account</th>
                       <th className="p-3">Type</th>
                       <th className="p-3 text-right">Committed Amount</th>
-                      <th className="p-3 text-right bg-indigo-50 border-l border-indigo-100">Achieved Amount</th>
-                      <th className="p-3 text-right bg-indigo-50">Achieved %</th>
-                      <th className="p-3 text-right bg-indigo-50">Amount to Achieve</th>
+                      <th className="p-3 text-right bg-blue-50 border-l border-blue-100">Achieved Amount</th>
+                      <th className="p-3 text-right bg-blue-50">Achieved %</th>
+                      <th className="p-3 text-right bg-blue-50">Amount to Achieve</th>
                       {!isReadonly && <th className="p-3 w-10"></th>}
                     </tr>
                   </thead>
@@ -560,23 +552,23 @@ export function BudgetMaster() {
                               onChange={e => updateLine(line.id, 'committedAmount', parseFloat(e.target.value) || 0)}
                             />
                           </td>
-                          <td className="p-2 text-right bg-indigo-50/30 border-l border-indigo-50">
+                          <td className="p-2 text-right bg-blue-50/30 border-l border-blue-50">
                             {isConfirmed ? (
-                              <button className="text-indigo-600 hover:underline font-bold" onClick={() => alert('Will open matching transactions in Module 5/6')}>
+                              <button className="text-blue-600 hover:underline font-bold" onClick={() => alert('Will open matching transactions in Module 5/6')}>
                                 Rs. {line.achievedAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </button>
                             ) : (
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-                          <td className="p-2 text-right bg-indigo-50/30">
+                          <td className="p-2 text-right bg-blue-50/30">
                             {isConfirmed ? (
                               <span className={`font-bold ${percent >= 100 ? 'text-emerald-600' : 'text-slate-700'}`}>
                                 {percent.toFixed(1)}%
                               </span>
                             ) : <span className="text-slate-400">-</span>}
                           </td>
-                          <td className="p-2 text-right bg-indigo-50/30">
+                          <td className="p-2 text-right bg-blue-50/30">
                             {isConfirmed ? (
                               <span className="font-semibold text-slate-700">
                                 Rs. {toAchieve.toLocaleString(undefined, {minimumFractionDigits: 2})}
@@ -603,7 +595,7 @@ export function BudgetMaster() {
               
               {!isReadonly && (
                 <div className="mt-3">
-                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-blue-600 bg-blue-50 hover:bg-blue-100">
                     <Plus size={16} /> Add Budget Line
                   </Button>
                 </div>

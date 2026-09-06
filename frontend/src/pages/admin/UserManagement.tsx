@@ -215,8 +215,8 @@ export function UserManagement() {
         );
       case Role.SubAdmin:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            <ShieldCheck size={13} className="text-indigo-600" /> Sub Admin
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            <ShieldCheck size={13} className="text-blue-600" /> Sub Admin
           </span>
         );
       case Role.Administrator:
@@ -227,8 +227,8 @@ export function UserManagement() {
         );
       case Role.Vendor:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
-            <Store size={13} className="text-purple-600" /> Vendor
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200">
+            <Store size={13} className="text-slate-600" /> Vendor
           </span>
         );
       case Role.Accountant:
@@ -276,7 +276,7 @@ export function UserManagement() {
       )}
 
       {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">User Administration</h1>
@@ -296,13 +296,13 @@ export function UserManagement() {
             disabled={loading}
             className="gap-2"
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin text-indigo-600' : ''} />
+            <RefreshCw size={15} className={loading ? 'animate-spin text-blue-600' : ''} />
             <span>Refresh</span>
           </Button>
           <Button
             variant="primary"
             onClick={() => setIsModalOpen(true)}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
           >
             <UserPlus size={16} />
             <span>Create Sub-Admin / User</span>
@@ -312,35 +312,35 @@ export function UserManagement() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Accounts</span>
             <Users size={16} className="text-slate-400" />
           </div>
           <div className="text-2xl font-black text-slate-900 mt-2">{stats.total}</div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-2xs">
+        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Admins & Sub-Admins</span>
-            <ShieldCheck size={16} className="text-indigo-600" />
+            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Admins & Sub-Admins</span>
+            <ShieldCheck size={16} className="text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-indigo-900 mt-2">{stats.admins}</div>
+          <div className="text-2xl font-black text-blue-900 mt-2">{stats.admins}</div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-purple-100 shadow-2xs">
+        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">Vendor Partners</span>
-            <Store size={16} className="text-purple-600" />
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Vendor Partners</span>
+            <Store size={16} className="text-slate-600" />
           </div>
-          <div className="text-2xl font-black text-purple-900 mt-2">{stats.vendors}</div>
+          <div className="text-2xl font-black text-slate-900 mt-2">{stats.vendors}</div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-2xs">
+        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Customers</span>
             <UserIcon size={16} className="text-blue-600" />
           </div>
           <div className="text-2xl font-black text-blue-900 mt-2">{stats.customers}</div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-2xs col-span-2 sm:col-span-1">
+        <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">Suspended</span>
             <Ban size={16} className="text-rose-500" />
@@ -350,7 +350,7 @@ export function UserManagement() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -358,7 +358,7 @@ export function UserManagement() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by name, login ID, email..."
-            className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+            className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
           />
         </div>
 
@@ -370,7 +370,7 @@ export function UserManagement() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="h-9 px-3 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="h-9 px-3 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">All Roles</option>
             <option value={Role.MasterAdmin}>Master Admin</option>
@@ -387,7 +387,7 @@ export function UserManagement() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 px-3 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="h-9 px-3 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">All Statuses</option>
             <option value="ACTIVE">Active Only</option>
@@ -397,7 +397,7 @@ export function UserManagement() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -425,8 +425,8 @@ export function UserManagement() {
                     <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-2xs ${
-                            isMaster ? 'bg-amber-500' : u.role === Role.Vendor ? 'bg-purple-600' : u.role === Role.SubAdmin ? 'bg-indigo-600' : 'bg-slate-600'
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-sm ${
+                            isMaster ? 'bg-amber-500' : u.role === Role.Vendor ? 'bg-slate-600' : u.role === Role.SubAdmin ? 'bg-blue-600' : 'bg-slate-600'
                           }`}>
                             {initial}
                           </div>
@@ -513,7 +513,7 @@ export function UserManagement() {
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-700 font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-700 font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value={10}>10</option>
                   <option value={25}>25</option>
@@ -568,10 +568,10 @@ export function UserManagement() {
       {/* Create User Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-xl rounded-xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
                   <UserPlus size={18} />
                 </div>
                 <div>
@@ -630,7 +630,7 @@ export function UserManagement() {
                   <select
                     value={modalData.role}
                     onChange={(e) => setModalData({ ...modalData, role: e.target.value as Role })}
-                    className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value={Role.SubAdmin}>🛡️ Sub-Admin (Operations Manager)</option>
                     <option value={Role.Administrator}>💼 Administrator</option>
@@ -683,7 +683,7 @@ export function UserManagement() {
                   type="submit"
                   variant="primary"
                   disabled={modalSubmitting}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {modalSubmitting ? 'Creating User...' : 'Create Account'}
                 </Button>

@@ -62,6 +62,7 @@ export function PurchaseOrderMaster() {
   const [vendors, setVendors] = useState<Contact[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticAccount[]>([]);
+  const [eligibleAnalytics, setEligibleAnalytics] = useState<AnalyticAccount[]>([]);
   const [termsList, setTermsList] = useState<string[]>([]);
   
   const [editingPO, setEditingPO] = useState<Partial<PurchaseOrder> | null>(null);
@@ -110,6 +111,7 @@ export function PurchaseOrderMaster() {
     }
 
     setAnalytics(mockDb.getAnalyticAccounts());
+    setEligibleAnalytics(mockDb.getEligibleAnalyticAccounts());
     setTermsList(mockDb.getPaymentTerms());
   }, [debouncedSearch]);
 
@@ -390,7 +392,7 @@ export function PurchaseOrderMaster() {
         return (
           <div>
             <div className="font-black text-slate-900">₹{totalWithGst.toLocaleString()}</div>
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
               18% GST
             </span>
           </div>
@@ -404,14 +406,14 @@ export function PurchaseOrderMaster() {
         const colors: Record<string, string> = {
           [PurchaseOrderStatus.Draft]: 'bg-slate-100 text-slate-700 border-slate-200',
           [PurchaseOrderStatus.SentToVendor]: 'bg-amber-50 text-amber-800 border-amber-200',
-          [PurchaseOrderStatus.Accepted]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          [PurchaseOrderStatus.Accepted]: 'bg-blue-50 text-blue-700 border-blue-200',
           [PurchaseOrderStatus.Confirmed]: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
           [PurchaseOrderStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200/80',
         };
         return (
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-md border ${colors[p.status] || 'bg-slate-100 text-slate-700'}`}>
             {p.status === PurchaseOrderStatus.SentToVendor && <Clock size={12} className="animate-spin" />}
-            {p.status === PurchaseOrderStatus.Accepted && <CheckCheck size={13} className="text-indigo-600" />}
+            {p.status === PurchaseOrderStatus.Accepted && <CheckCheck size={13} className="text-blue-600" />}
             {p.status}
           </span>
         );
@@ -429,7 +431,7 @@ export function PurchaseOrderMaster() {
             type="button" 
             variant="primary" 
             onClick={() => handleOpenDirectSettle(editingPO.id || '')} 
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-bold shadow-xs"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-bold shadow-sm"
           >
             <Banknote size={17} /> Settle Payment (Hand-to-Hand)
           </Button>
@@ -495,7 +497,7 @@ export function PurchaseOrderMaster() {
           variant="primary"
           disabled={!editingPO.lines?.length || !editingPO.vendorId}
           onClick={() => handleSave(PurchaseOrderStatus.SentToVendor)}
-          className="bg-purple-600 hover:bg-purple-700 text-white gap-2 font-bold shadow-xs"
+          className="bg-slate-600 hover:bg-slate-700 text-white gap-2 font-bold shadow-sm"
         >
           <Send size={16} />
           <span>Send Request to Vendor</span>
@@ -505,7 +507,6 @@ export function PurchaseOrderMaster() {
   };
 
   const isReadonly = editingPO?.status !== PurchaseOrderStatus.Draft && editingPO?.status !== undefined;
-  let totalOrderValue = (editingPO?.lines || []).reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
 
   return (
     <div className="space-y-6">
@@ -529,13 +530,13 @@ export function PurchaseOrderMaster() {
       )}
 
       {/* Top Mode Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setViewMode('list')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'list'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
@@ -545,8 +546,8 @@ export function PurchaseOrderMaster() {
             onClick={() => setViewMode('sourcing')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               viewMode === 'sourcing'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                ? 'bg-slate-600 text-white shadow-sm'
+                : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
             }`}
           >
             <Search size={14} />
@@ -558,7 +559,7 @@ export function PurchaseOrderMaster() {
           <Button
             variant="primary"
             onClick={handleNew}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold"
+            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
           >
             <Plus size={15} />
             <span>New Purchase Order</span>
@@ -569,35 +570,38 @@ export function PurchaseOrderMaster() {
       {/* SOURCING SEARCH VIEW */}
       {viewMode === 'sourcing' && (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white p-8 rounded-3xl shadow-lg relative overflow-hidden">
-            <div className="relative z-10 max-w-3xl space-y-3">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-purple-200 backdrop-blur-xs">
-                🏢 Enterprise Sourcing Hub
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-                Search Products Across Verified Vendors
-              </h2>
-              <p className="text-sm text-purple-200">
-                Find supplies from registered vendors in real-time. Check live stock levels, compare prices, and directly issue a purchase request.
-              </p>
+          <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-xl shadow-sm">
+            <div className="max-w-3xl space-y-4">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <ShoppingBag size={14} /> VENDOR SOURCING
+              </div>
+              
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  Find Products & Suppliers
+                </h2>
+                <p className="text-[15px] text-slate-500 mt-1.5">
+                  Search the vendor marketplace to compare available products, stock and supplier pricing.
+                </p>
+              </div>
 
-              <div className="pt-3 flex gap-2">
+              <div className="pt-2 flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
-                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={sourcingQuery}
                     onChange={(e) => setSourcingQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearchSourcing()}
                     placeholder="Search product (e.g. Air Conditioner, Chair, Desk, Refrigerator)..."
-                    className="w-full pl-11 pr-4 py-3 bg-white text-slate-800 font-medium rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 shadow-md"
+                    className="w-full h-11 pl-10 pr-4 bg-white border border-slate-300 text-slate-900 font-medium rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-shadow"
                   />
                 </div>
                 <Button
                   variant="primary"
                   onClick={() => handleSearchSourcing()}
                   disabled={sourcingLoading}
-                  className="bg-purple-500 hover:bg-purple-600 text-white font-bold px-6 h-auto"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 h-11 rounded-lg shrink-0 active:translate-y-[1px] transition-all"
                 >
                   {sourcingLoading ? 'Searching...' : 'Search'}
                 </Button>
@@ -608,11 +612,11 @@ export function PurchaseOrderMaster() {
           {/* Sourcing Results Grid */}
           <div className="space-y-3">
             <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <Store size={18} className="text-purple-600" /> Available Vendor Products ({sourcingResults.length})
+              <Store size={18} className="text-slate-600" /> Available Vendor Products ({sourcingResults.length})
             </h3>
 
             {sourcingResults.length === 0 ? (
-              <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400">
+              <div className="bg-white p-12 text-center rounded-xl border border-slate-200 text-slate-400">
                 No vendor products found matching &quot;{sourcingQuery}&quot;. Try searching for &quot;Air Conditioner&quot; or &quot;Desk&quot;.
               </div>
             ) : (
@@ -620,13 +624,13 @@ export function PurchaseOrderMaster() {
                 {sourcingResults.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                    className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <h4 className="font-bold text-slate-900 text-base leading-snug">{item.name}</h4>
-                          <div className="text-xs text-purple-600 font-semibold flex items-center gap-1 mt-0.5">
+                          <div className="text-xs text-slate-600 font-semibold flex items-center gap-1 mt-0.5">
                             <Store size={12} /> {item.vendorName}
                           </div>
                         </div>
@@ -652,7 +656,7 @@ export function PurchaseOrderMaster() {
                         variant="primary"
                         size="sm"
                         onClick={() => handleOrderFromSourcing(item)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5 font-bold shadow-xs"
+                        className="bg-slate-600 hover:bg-slate-700 text-white gap-1.5 font-bold shadow-sm"
                       >
                         <PackageCheck size={15} />
                         <span>Order from Vendor</span>
@@ -708,7 +712,7 @@ export function PurchaseOrderMaster() {
               const lineCount = (po.lines || []).length;
 
               return (
-                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+                <div className="bg-white p-5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -771,7 +775,7 @@ export function PurchaseOrderMaster() {
                   {editingPO.number || 'New Purchase Order'}
                 </div>
                 <span className={`px-4 py-1.5 text-sm font-bold uppercase tracking-wider rounded-full border 
-                  ${editingPO.status === PurchaseOrderStatus.Accepted ? 'bg-indigo-100 text-indigo-800 border-indigo-200' :
+                  ${editingPO.status === PurchaseOrderStatus.Accepted ? 'bg-blue-100 text-blue-800 border-blue-200' :
                     editingPO.status === PurchaseOrderStatus.SentToVendor ? 'bg-amber-100 text-amber-800 border-amber-200' :
                     editingPO.status === PurchaseOrderStatus.Confirmed ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 
                     editingPO.status === PurchaseOrderStatus.Cancelled ? 'bg-red-100 text-red-800 border-red-200' :
@@ -789,14 +793,14 @@ export function PurchaseOrderMaster() {
               )}
 
               {editingPO.status === PurchaseOrderStatus.Accepted && (
-                <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-xl text-indigo-900 text-xs font-semibold flex items-center justify-between">
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-blue-900 text-xs font-semibold flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <CheckCheck size={18} className="text-indigo-600" />
+                    <CheckCheck size={18} className="text-blue-600" />
                     <span>Vendor has accepted this order! Vendor Bill generated automatically for settlement.</span>
                   </div>
                   <button
                     onClick={() => handleOpenDirectSettle(editingPO.id || '')}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs cursor-pointer shadow-xs"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs cursor-pointer shadow-sm"
                   >
                     💵 Record Hand-to-Hand Payment
                   </button>
@@ -921,8 +925,8 @@ export function PurchaseOrderMaster() {
                                 placeholder="(None)"
                                 value={line.analyticAccountId || ''}
                                 disabled={isReadonly}
-                                asyncSearchUrl="/api/analytics"
-                                options={analytics.map(a => ({
+                                asyncSearchUrl="/api/analytics/eligible"
+                                options={eligibleAnalytics.map(a => ({
                                   id: a.id,
                                   name: a.name,
                                   subtitle: a.type,
@@ -980,7 +984,7 @@ export function PurchaseOrderMaster() {
                         </td>
                         {!isReadonly && <td className="border-t border-slate-200"></td>}
                       </tr>
-                      <tr className="bg-indigo-50/20 text-xs text-indigo-900">
+                      <tr className="bg-blue-50/20 text-xs text-blue-900">
                         <td colSpan={4} className="p-2 text-right font-medium">
                           Input Central GST (CGST 9%):
                         </td>
@@ -989,7 +993,7 @@ export function PurchaseOrderMaster() {
                         </td>
                         {!isReadonly && <td></td>}
                       </tr>
-                      <tr className="bg-indigo-50/20 text-xs text-indigo-900">
+                      <tr className="bg-blue-50/20 text-xs text-blue-900">
                         <td colSpan={4} className="p-2 text-right font-medium">
                           Input State GST (SGST 9%):
                         </td>
@@ -999,13 +1003,13 @@ export function PurchaseOrderMaster() {
                         {!isReadonly && <td></td>}
                       </tr>
                       <tr>
-                        <td colSpan={4} className="p-4 text-right font-bold text-slate-800 border-t-2 border-indigo-200 bg-indigo-50/40">
+                        <td colSpan={4} className="p-4 text-right font-bold text-slate-800 border-t-2 border-blue-200 bg-blue-50/40">
                           Total Order Value (Incl. 18% GST):
                         </td>
-                        <td className="p-4 text-right font-black text-lg text-indigo-700 border-t-2 border-indigo-200 bg-indigo-50/40">
+                        <td className="p-4 text-right font-black text-lg text-blue-700 border-t-2 border-blue-200 bg-blue-50/40">
                           ₹{calculateGST((editingPO.lines || []).reduce((s, l) => s + (l.qty * l.unitPrice), 0)).totalWithGst.toLocaleString(undefined, {minimumFractionDigits: 2})}
                         </td>
-                        {!isReadonly && <td className="border-t-2 border-indigo-200 bg-indigo-50/40"></td>}
+                        {!isReadonly && <td className="border-t-2 border-blue-200 bg-blue-50/40"></td>}
                       </tr>
                     </tfoot>
                   </table>
@@ -1013,7 +1017,7 @@ export function PurchaseOrderMaster() {
                 
                 {!isReadonly && (
                   <div className="mt-3">
-                    <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                    <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-blue-600 bg-blue-50 hover:bg-blue-100">
                       <Plus size={16} /> Add Product Line
                     </Button>
                   </div>
@@ -1028,10 +1032,10 @@ export function PurchaseOrderMaster() {
       {/* Direct Hand-to-Hand Settlement Modal */}
       {settleModalBill && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-emerald-50/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
                   <Banknote size={18} />
                 </div>
                 <div>
@@ -1075,7 +1079,7 @@ export function PurchaseOrderMaster() {
                     onClick={() => setPaymentMethod('Cash')}
                     className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                       paymentMethod === 'Cash'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -1086,7 +1090,7 @@ export function PurchaseOrderMaster() {
                     onClick={() => setPaymentMethod('Bank')}
                     className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                       paymentMethod === 'Bank'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >

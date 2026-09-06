@@ -180,7 +180,7 @@ export function JournalsMaster() {
         <div className="flex flex-col items-center justify-center h-64 text-slate-500">
           <BookMarked size={48} className="mb-4 text-slate-300" />
           <p>Kanban view is not available for Journals.</p>
-          <button onClick={() => setViewMode('list')} className="mt-4 text-indigo-600 hover:underline">Switch to List View</button>
+          <button onClick={() => setViewMode('list')} className="mt-4 text-blue-600 hover:underline">Switch to List View</button>
         </div>
       )}
 
@@ -199,7 +199,7 @@ export function JournalsMaster() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Journal Type</label>
                 <select 
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={editingJournal.type || JournalType.Sales}
                   onChange={e => setEditingJournal({ ...editingJournal, type: e.target.value as JournalType })}
                 >
@@ -213,7 +213,7 @@ export function JournalsMaster() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Default Account</label>
                 <select 
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={editingJournal.defaultAccountId || ''}
                   onChange={e => setEditingJournal({ ...editingJournal, defaultAccountId: e.target.value })}
                   required

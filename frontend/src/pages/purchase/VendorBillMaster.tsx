@@ -41,6 +41,7 @@ export function VendorBillMaster() {
   const [vendors, setVendors] = useState<Contact[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticAccount[]>([]);
+  const [eligibleAnalytics, setEligibleAnalytics] = useState<AnalyticAccount[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   
   const [editingBill, setEditingBill] = useState<Partial<VendorBill> | null>(null);
@@ -85,6 +86,7 @@ export function VendorBillMaster() {
     }
 
     setAnalytics(mockDb.getAnalyticAccounts());
+    setEligibleAnalytics(mockDb.getEligibleAnalyticAccounts());
     setAccounts(mockDb.getAccounts());
   }, [debouncedSearch]);
 
@@ -221,7 +223,7 @@ export function VendorBillMaster() {
         return (
           <div>
             <div className="font-bold text-slate-900">Rs. {totalWithGst.toLocaleString()}</div>
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
               18% GST
             </span>
           </div>
@@ -327,7 +329,7 @@ export function VendorBillMaster() {
             const due = totalWithGst - (bill.amountPaid || 0);
 
             return (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+              <div className="bg-white p-5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -388,7 +390,7 @@ export function VendorBillMaster() {
               <div className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                 {editingBill.number || 'New Vendor Bill'}
                 {originatingPo && (
-                  <span className="text-sm font-normal text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1 cursor-pointer hover:bg-indigo-100 transition-colors">
+                  <span className="text-sm font-normal text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex items-center gap-1 cursor-pointer hover:bg-blue-100 transition-colors">
                     <Link to={`/purchase/orders`} className="flex items-center gap-1">
                       From PO: {originatingPo.number} <ArrowRight size={14} />
                     </Link>
@@ -540,8 +542,8 @@ export function VendorBillMaster() {
                               placeholder="(None)"
                               value={line.analyticAccountId || ''}
                               disabled={isReadonly}
-                              asyncSearchUrl="/api/analytics"
-                              options={analytics.map(a => ({
+                              asyncSearchUrl="/api/analytics/eligible"
+                              options={eligibleAnalytics.map(a => ({
                                 id: a.id,
                                 name: a.name,
                                 subtitle: a.type,
@@ -594,7 +596,7 @@ export function VendorBillMaster() {
               
               {!isReadonly && (
                 <div className="mt-3">
-                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-blue-600 bg-blue-50 hover:bg-blue-100">
                     <Plus size={16} /> Add Line
                   </Button>
                 </div>
@@ -603,21 +605,21 @@ export function VendorBillMaster() {
 
             {/* Totals Block with GST Breakdown */}
             <div className="flex justify-end pt-4">
-              <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+              <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <div className="p-4 space-y-2.5 text-sm">
                   <div className="flex justify-between text-slate-600">
                     <span>Untaxed Subtotal</span>
                     <span className="font-semibold text-slate-800">Rs. {subtotalUntaxed.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
 
-                  <div className="flex justify-between text-slate-600 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg border border-indigo-100/60">
-                    <span className="text-indigo-950 font-medium">Input Central GST (CGST 9%)</span>
-                    <span className="font-bold text-indigo-900">+ Rs. {gstBreakdown.cgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  <div className="flex justify-between text-slate-600 bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100/60">
+                    <span className="text-blue-950 font-medium">Input Central GST (CGST 9%)</span>
+                    <span className="font-bold text-blue-900">+ Rs. {gstBreakdown.cgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
 
-                  <div className="flex justify-between text-slate-600 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg border border-indigo-100/60">
-                    <span className="text-indigo-950 font-medium">Input State GST (SGST 9%)</span>
-                    <span className="font-bold text-indigo-900">+ Rs. {gstBreakdown.sgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  <div className="flex justify-between text-slate-600 bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100/60">
+                    <span className="text-blue-950 font-medium">Input State GST (SGST 9%)</span>
+                    <span className="font-bold text-blue-900">+ Rs. {gstBreakdown.sgst.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
 
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-base">
@@ -638,7 +640,7 @@ export function VendorBillMaster() {
                   
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-lg">
                     <span className="font-bold text-slate-800">Amount Due</span>
-                    <span className={`font-black ${amountDue <= 0 ? 'text-emerald-600' : 'text-indigo-700'}`}>
+                    <span className={`font-black ${amountDue <= 0 ? 'text-emerald-600' : 'text-blue-700'}`}>
                       Rs. {amountDue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </span>
                   </div>

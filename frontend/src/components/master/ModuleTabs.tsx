@@ -57,14 +57,13 @@ export function ModuleTabs() {
     tabs = [
       { label: 'Profit & Loss', to: '/report/profit-and-loss', icon: <TrendingUp size={17} /> },
       { label: 'Balance Sheet', to: '/report/balance-sheet', icon: <Scale size={17} /> },
-      { label: 'Budget Report', to: '/report/budget', icon: <Target size={17} /> },
     ];
   }
 
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1 border-b border-slate-200/80 mb-6 bg-white/50 px-2 rounded-t-lg overflow-x-auto no-scrollbar">
+    <div className="flex items-center gap-1 border-b border-slate-200 mb-6 px-1 overflow-x-auto overflow-y-hidden no-scrollbar">
       {tabs.map((tab) => {
         const isActive = path === tab.to || path.startsWith(tab.to + '/');
         return (
@@ -72,16 +71,16 @@ export function ModuleTabs() {
             key={tab.to}
             to={tab.to}
             className={cn(
-              "flex items-center gap-2 py-3 px-4 text-sm font-medium transition-all relative whitespace-nowrap",
+              "flex items-center gap-2 py-2.5 px-4 text-[14px] font-medium transition-colors relative whitespace-nowrap",
               isActive
-                ? "text-blue-600 font-semibold"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/50 rounded-lg"
+                ? "text-blue-700 font-bold"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-md"
             )}
           >
             {tab.icon}
             <span>{tab.label}</span>
             {isActive && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+              <span className="absolute bottom-[-1px] left-0 right-0 h-[2px] bg-blue-700 rounded-t-full" />
             )}
           </NavLink>
         );

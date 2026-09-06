@@ -22,15 +22,63 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<OmitPassword<User> | null>(() => {
-    return mockDb.getSession();
-  });
+  const [currentUser, setCurrentUser] = useState<OmitPassword<User> | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    if (currentUser) {
+    const initAuth = async () => {
+      const token = localStorage.getItem('urbanfin_jwt_token');
+      if (!token) {
+        setCurrentUser(null);
+        mockDb.clearSession();
+        setIsInitializing(false);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          const userSession = {
+            id: data.user.id || data.user._id,
+            name: data.user.name,
+            loginId: data.user.loginId,
+            email: data.user.email,
+            role: data.user.role,
+            contactId: data.user.contactId,
+            isSuspended: data.user.isSuspended,
+            isMasterAdmin: data.user.isMasterAdmin,
+          };
+          setCurrentUser(userSession);
+          mockDb.setSession(userSession);
+        } else if (res.status === 401 || res.status === 403) {
+          // Token expired or invalid
+          localStorage.removeItem('urbanfin_jwt_token');
+          mockDb.clearSession();
+          setCurrentUser(null);
+        } else {
+          // Fallback to mock session if backend gives an unknown error
+          setCurrentUser(mockDb.getSession());
+        }
+      } catch (e) {
+        // Network error, backend offline -> fallback to mock session
+        setCurrentUser(mockDb.getSession());
+      }
+      
+      setIsInitializing(false);
+    };
+
+    initAuth();
+  }, []);
+
+  useEffect(() => {
+    if (currentUser && !isInitializing) {
       mockDb.syncWithBackend();
     }
-  }, []);
+  }, [currentUser, isInitializing]);
 
   const login = async (loginId: string, password: string): Promise<AuthResult> => {
     try {
@@ -82,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
       const { password: _, ...userWithoutPassword } = user;
+      localStorage.setItem('urbanfin_jwt_token', 'mock_local_jwt_token'); // Mock token to bypass fetchWithCache check
       setCurrentUser(userWithoutPassword);
       mockDb.setSession(userWithoutPassword);
       return { success: true };
@@ -141,6 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const newUser = mockDb.addUser({ ...userData, role: userData.role || Role.Accountant });
     const { password: _, ...userWithoutPassword } = newUser;
+    localStorage.setItem('urbanfin_jwt_token', 'mock_local_jwt_token'); // Mock token for offline signup
     setCurrentUser(userWithoutPassword);
     mockDb.setSession(userWithoutPassword);
     return { success: true };
@@ -241,7 +291,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         deleteUser,
       }}
     >
-      {children}
+      {!isInitializing ? children : (
+        <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

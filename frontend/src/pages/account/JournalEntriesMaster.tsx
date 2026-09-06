@@ -11,7 +11,7 @@ import { mockDb } from '../../mock/db';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { FileText, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { FileText, Plus, Trash2, AlertCircle, CheckCircle2, Link } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { fetchWithCache, clientCache } from '../../utils/clientCache';
 
@@ -97,7 +97,22 @@ export function JournalEntriesMaster() {
     setViewMode('form');
   };
 
-  const handleEdit = (entry: JournalEntry) => {
+  const handleEdit = async (entry: JournalEntry) => {
+    // Fetch the enriched version (with sourceLabel, partnerName, journalName)
+    try {
+      const res = await fetch(`/api/journal-entries/${entry.id}`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const enriched = await res.json();
+        setEditingEntry({ ...enriched });
+        setViewMode('form');
+        return;
+      }
+    } catch (err) {
+      console.warn('[JournalEntries] Could not fetch enriched entry:', err);
+    }
+    // Fallback to local data
     setEditingEntry({ ...entry });
     setViewMode('form');
   };
@@ -111,19 +126,42 @@ export function JournalEntriesMaster() {
     if (!editingEntry || !editingEntry.journalId || !editingEntry.date) return;
 
     const payload = {
-      ...editingEntry,
+      date: editingEntry.date,
+      journalId: editingEntry.journalId,
+      partnerId: editingEntry.partnerId,
       status,
-      total: totalDebit
-    } as JournalEntry;
+      lines: editingEntry.lines || [],
+      number: editingEntry.number,
+      sourceDocument: editingEntry.sourceDocument,
+    };
 
-    if (payload.id) {
-      mockDb.updateJournalEntry(payload.id, payload);
-    } else {
-      mockDb.addJournalEntry(payload as Omit<JournalEntry, 'id'>);
+    try {
+      if (editingEntry.id) {
+        // Update existing entry via real API
+        await fetch(`/api/journal-entries/${editingEntry.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // Create new entry via real API
+        await fetch('/api/journal-entries', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload),
+        });
+      }
+    } catch (err) {
+      console.warn('[JournalEntries] API call failed, falling back to mockDb sync:', err);
+      if (editingEntry.id) {
+        mockDb.updateJournalEntry(editingEntry.id, { ...editingEntry, status, total: totalDebit } as any);
+      } else {
+        mockDb.addJournalEntry({ ...editingEntry, status, total: totalDebit } as any);
+      }
     }
-    
-    await mockDb.syncWithBackend();
-    loadData();
+
+    clientCache.invalidate('journal_entries');
+    await loadData();
     setViewMode('list');
     setEditingEntry(null);
   };
@@ -131,9 +169,18 @@ export function JournalEntriesMaster() {
   const handleDelete = async () => {
     if (!editingEntry?.id) return;
     if (window.confirm(`Are you sure you want to delete entry "${editingEntry.number || 'Draft'}"?`)) {
-      mockDb.deleteJournalEntry(editingEntry.id);
-      await mockDb.syncWithBackend();
-      loadData();
+      try {
+        await fetch(`/api/journal-entries/${editingEntry.id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+      } catch (err) {
+        console.warn('[JournalEntries] Delete API failed, using mockDb:', err);
+        mockDb.deleteJournalEntry(editingEntry.id);
+        await mockDb.syncWithBackend();
+      }
+      clientCache.invalidate('journal_entries');
+      await loadData();
       setViewMode('list');
       setEditingEntry(null);
     }
@@ -178,17 +225,51 @@ export function JournalEntriesMaster() {
   };
 
   // Status-based actions
-  const handlePost = () => {
-    if (isBalanced) {
-      handleSave(JournalEntryStatus.Posted);
+  const handlePost = async () => {
+    if (!isBalanced) {
+      alert(`Cannot post: Total Debit (Rs. ${totalDebit.toFixed(2)}) must equal Total Credit (Rs. ${totalCredit.toFixed(2)}).`);
+      return;
+    }
+    if (editingEntry?.id) {
+      // Use the dedicated POST endpoint for an existing entry
+      try {
+        const res = await fetch(`/api/journal-entries/${editingEntry.id}/post`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          alert(data.message || 'Failed to post journal entry.');
+          return;
+        }
+      } catch (err) {
+        console.warn('[JournalEntries] Post API failed:', err);
+        return;
+      }
+      clientCache.invalidate('journal_entries');
+      await loadData();
+      setViewMode('list');
+      setEditingEntry(null);
+    } else {
+      // New entry — save as Posted in one shot
+      await handleSave(JournalEntryStatus.Posted);
     }
   };
 
   const handleReset = async () => {
     if (!editingEntry || !editingEntry.id) return;
-    mockDb.updateJournalEntry(editingEntry.id, { status: JournalEntryStatus.Draft });
-    await mockDb.syncWithBackend();
-    loadData();
+    try {
+      await fetch(`/api/journal-entries/${editingEntry.id}/reset`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+    } catch (err) {
+      console.warn('[JournalEntries] Reset API failed, using mockDb:', err);
+      mockDb.updateJournalEntry(editingEntry.id, { status: JournalEntryStatus.Draft });
+      await mockDb.syncWithBackend();
+    }
+    clientCache.invalidate('journal_entries');
+    await loadData();
     setViewMode('list');
     setEditingEntry(null);
   };
@@ -299,7 +380,7 @@ export function JournalEntriesMaster() {
             const contact = contacts.find(c => c.id === entry.partnerId);
             const journal = journals.find(j => j.id === entry.journalId);
             return (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
+              <div className="bg-white p-5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all group flex flex-col justify-between h-full">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -500,18 +581,62 @@ export function JournalEntriesMaster() {
               
               {!isReadonly && (
                 <div className="p-2 border-t border-slate-200">
-                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-indigo-600">
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine} className="gap-1 text-blue-600">
                     <Plus size={16} /> Add Line
                   </Button>
                 </div>
               )}
             </div>
 
+            {/* Source Document Reference (for auto-generated entries) */}
+            {editingEntry.sourceDocument?.id && (editingEntry as any).sourceLabel && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 text-sm">
+                <Link size={16} className="text-blue-500 flex-shrink-0" />
+                <span className="text-blue-700">
+                  <span className="font-semibold">Source: </span>
+                  {(editingEntry as any).sourceLabel}
+                </span>
+              </div>
+            )}
+
             {/* Validation Warning */}
-            {!isReadonly && !isBalanced && (editingEntry.lines?.length || 0) > 0 && (
-              <div className="flex items-center gap-2 p-4 bg-orange-50 text-orange-800 rounded-lg border border-orange-200">
-                <AlertCircle size={20} />
-                <span className="font-medium">Total Debits must equal Total Credits to post this entry. Difference: {Math.abs(totalDebit - totalCredit).toFixed(2)}</span>
+            {!isReadonly && (editingEntry.lines?.length || 0) > 0 && (
+              <div className={`p-4 rounded-lg border ${
+                isBalanced
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-orange-50 border-orange-200 text-orange-800'
+              }`}>
+                <div className="flex items-start gap-2">
+                  {isBalanced
+                    ? <CheckCircle2 size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                    : <AlertCircle size={20} className="text-orange-600 flex-shrink-0 mt-0.5" />}
+                  <div className="flex-1">
+                    <div className="font-semibold mb-1">
+                      {isBalanced ? '✓ Journal Entry is balanced' : '⚠ Debit and Credit amounts do not match'}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wide opacity-70 mb-0.5">Total Debit</div>
+                        <div className="font-bold text-base">Rs. {totalDebit.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wide opacity-70 mb-0.5">Total Credit</div>
+                        <div className="font-bold text-base">Rs. {totalCredit.toFixed(2)}</div>
+                      </div>
+                      {!isBalanced && (
+                        <div>
+                          <div className="text-xs font-medium uppercase tracking-wide opacity-70 mb-0.5">Difference</div>
+                          <div className="font-bold text-base">Rs. {Math.abs(totalDebit - totalCredit).toFixed(2)}</div>
+                        </div>
+                      )}
+                    </div>
+                    {!isBalanced && (
+                      <div className="mt-2 text-xs opacity-80">
+                        Please add or correct the journal lines before posting.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

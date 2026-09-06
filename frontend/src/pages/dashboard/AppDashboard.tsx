@@ -41,7 +41,7 @@ interface DashboardStats {
   };
   financialStats: {
     monthlyRevenue: number;
-    netProfit: number;
+    netProfit: number | null;
     paidInvoicesCount: number;
     totalInvoicesCount: number;
     paidInvoicesPercent: number;
@@ -60,197 +60,73 @@ interface DashboardStats {
   salesDynamics: Array<{
     month: string;
     val1: number;
-    val2: number;
+  }>;
+  revenueTrend: Array<{
+    label: string;
+    dateRange: string;
+    revenue: number;
   }>;
 }
 
 const defaultStats: DashboardStats = {
-  customerStats: {
-    total: 139,
-    new: 45,
-    returning: 82,
-    inactive: 12,
-  },
-  vendorStats: {
-    total: 25,
-  },
-  salesStats: {
-    all: 120,
-    confirmed: 60,
-    draft: 60,
-  },
-  purchaseStats: {
-    all: 85,
-    confirmed: 40,
-    draft: 45,
-  },
-  budgetStats: {
-    budget: 1,
-    onTrack: 1,
-    over: 0,
-    committed: 100000,
-    achieved: 35000,
-  },
+  customerStats: { total: 0, new: 0, returning: 0, inactive: 0 },
+  vendorStats: { total: 0 },
+  salesStats: { all: 0, confirmed: 0, draft: 0 },
+  purchaseStats: { all: 0, confirmed: 0, draft: 0 },
+  budgetStats: { budget: 0, onTrack: 0, over: 0, committed: 0, achieved: 0 },
   financialStats: {
-    monthlyRevenue: 8023041,
-    netProfit: 194000,
-    paidInvoicesCount: 30,
-    totalInvoicesCount: 40,
-    paidInvoicesPercent: 76,
-    paymentsMadeCount: 120,
-    totalBillsCount: 200,
-    paymentsMadePercent: 60,
+    monthlyRevenue: 0,
+    netProfit: 0,
+    paidInvoicesCount: 0,
+    totalInvoicesCount: 0,
+    paidInvoicesPercent: 0,
+    paymentsMadeCount: 0,
+    totalBillsCount: 0,
+    paymentsMadePercent: 0,
   },
-  recentTransactions: [
-    { id: '1', number: 'INV/2025/02394', date: '2025-07-15', amount: 327240, status: 'PARTIALLY PAID', type: 'invoice' },
-    { id: '2', number: 'INV/2026/02393', date: '2026-06-06', amount: 260215, status: 'CONFIRMED', type: 'invoice' },
-    { id: '3', number: 'INV/2026/02392', date: '2026-05-25', amount: 198180, status: 'PAID', type: 'invoice' },
-    { id: '4', number: 'BILL/2026/02411', date: '2026-12-16', amount: 428960, status: 'DRAFT', type: 'bill' },
-  ],
-  salesDynamics: [
-    { month: 'Jan', val1: 4000, val2: 2400 },
-    { month: 'Feb', val1: 3000, val2: 1400 },
-    { month: 'Mar', val1: 2000, val2: 9800 },
-    { month: 'Apr', val1: 2800, val2: 3900 },
-    { month: 'May', val1: 1900, val2: 4800 },
-    { month: 'Jun', val1: 2400, val2: 3800 },
-    { month: 'Jul', val1: 3500, val2: 4300 },
-    { month: 'Aug', val1: 4000, val2: 2400 },
-    { month: 'Sep', val1: 5000, val2: 3000 },
-    { month: 'Oct', val1: 4500, val2: 2800 },
-    { month: 'Nov', val1: 6000, val2: 3500 },
-    { month: 'Dec', val1: 7200, val2: 4100 },
-  ],
+  recentTransactions: [],
+  salesDynamics: [],
+  revenueTrend: []
 };
 
 export function AppDashboard() {
   const [stats, setStats] = useState<DashboardStats>(defaultStats);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ visible: boolean; title: string; items: {label: string; value: string; color?: string}[]; x: number; y: number }>({ 
+    visible: false, title: '', items: [], x: 0, y: 0 
+  });
+
+  const handleMouseMove = (e: React.MouseEvent, title: string, items: {label: string; value: string; color?: string}[]) => {
+    // Determine if tooltip should render to the left or right of cursor based on screen position
+    const isRightHalf = e.clientX > window.innerWidth / 2;
+    const xOffset = isRightHalf ? -10 : 10;
+    
+    setTooltip({ 
+      visible: true, 
+      title, 
+      items, 
+      x: e.clientX + xOffset, 
+      y: e.clientY - 20 
+    });
+  };
+  
+  const handleMouseLeave = () => {
+    setTooltip(prev => ({ ...prev, visible: false }));
+  };
 
   const loadLiveData = async () => {
     try {
-      const data = await fetchWithCache<DashboardStats>('/api/dashboard/summary', undefined, 20);
+      setError(null);
+      const data = await fetchWithCache<DashboardStats>('/api/dashboard/summary', undefined, 0); // Disable cache to get fresh data on mount
       if (data && data.customerStats) {
         setStats(data);
-        setLoading(false);
-        return;
+      } else {
+        throw new Error('Invalid dashboard data structure');
       }
-    } catch {
-      // Fallback calculation from local mockDb if API is offline
-      try {
-        const contacts = mockDb.getContacts();
-        const sos = mockDb.getSalesOrders();
-        const pos = mockDb.getPurchaseOrders();
-        const invoices = mockDb.getCustomerInvoices();
-        const bills = mockDb.getVendorBills();
-        const budgets = mockDb.getBudgets();
-
-        const custContacts = contacts.filter(c => c.type === 'Customer' || (c.type as any) === 'Both');
-        const vendContacts = contacts.filter(c => c.type === 'Vendor' || (c.type as any) === 'Both');
-        
-        // Count orders per customer
-        const custOrderMap = new Map<string, number>();
-        sos.forEach(s => {
-          if (s.customerId) {
-            custOrderMap.set(s.customerId, (custOrderMap.get(s.customerId) || 0) + 1);
-          }
-        });
-
-        let returning = 0;
-        let newCust = 0;
-        custOrderMap.forEach(count => {
-          if (count >= 2) returning++;
-          else if (count === 1) newCust++;
-        });
-
-        const totalCust = Math.max(custContacts.length, custOrderMap.size);
-        const inactive = Math.max(0, totalCust - returning - newCust);
-
-        const totalSo = sos.length || 120;
-        const confirmedSo = sos.filter(s => s.status === SalesOrderStatus.Confirmed).length || 60;
-
-        let revenue = invoices
-          .filter(i => i.status === CustomerInvoiceStatus.Paid || i.status === CustomerInvoiceStatus.Confirmed)
-          .reduce((sum, i) => sum + (i.lines?.reduce((ls, l) => ls + (l.qty * l.unitPrice), 0) || (i as any).totalAmount || 0), 0);
-        if (revenue === 0) revenue = 8023041;
-
-        let billExpenses = bills
-          .filter(b => b.status === VendorBillStatus.Paid || b.status === VendorBillStatus.Confirmed)
-          .reduce((sum, b) => sum + (b.lines?.reduce((ls, l) => ls + (l.qty * l.unitPrice), 0) || (b as any).totalAmount || 0), 0);
-        
-        let netProfit = revenue - billExpenses;
-        if (netProfit <= 0) netProfit = 194000;
-
-        const paidInvoices = invoices.filter(i => i.status === CustomerInvoiceStatus.Paid).length;
-        const paidBills = bills.filter(b => b.status === VendorBillStatus.Paid).length;
-
-        const txs: any[] = [];
-        invoices.slice(-3).reverse().forEach(inv => {
-          const invTotal = inv.lines?.reduce((ls, l) => ls + (l.qty * l.unitPrice), 0) || (inv as any).totalAmount || 0;
-          txs.push({
-            id: inv.id,
-            number: inv.number || 'INV/2026/0001',
-            date: inv.invoiceDate,
-            amount: invTotal,
-            status: inv.status.toUpperCase(),
-            type: 'invoice'
-          });
-        });
-        bills.slice(-2).reverse().forEach(bill => {
-          const billTotal = bill.lines?.reduce((ls, l) => ls + (l.qty * l.unitPrice), 0) || (bill as any).totalAmount || 0;
-          txs.push({
-            id: bill.id,
-            number: bill.number || 'BILL/2026/0001',
-            date: bill.billDate,
-            amount: billTotal,
-            status: bill.status.toUpperCase(),
-            type: 'bill'
-          });
-        });
-
-        setStats({
-          customerStats: {
-            total: totalCust || 139,
-            new: newCust || 45,
-            returning: returning || 82,
-            inactive: inactive || 12,
-          },
-          vendorStats: {
-            total: vendContacts.length || 25,
-          },
-          salesStats: {
-            all: totalSo,
-            confirmed: confirmedSo,
-            draft: totalSo - confirmedSo,
-          },
-          purchaseStats: {
-            all: pos.length || 85,
-            confirmed: pos.filter(p => p.status === 'Confirmed').length || 40,
-            draft: pos.filter(p => p.status === 'Draft').length || 45,
-          },
-          budgetStats: {
-            budget: budgets.length || 1,
-            onTrack: budgets.length || 1,
-            over: 0,
-            committed: 100000,
-            achieved: 35000,
-          },
-          financialStats: {
-            monthlyRevenue: revenue,
-            netProfit: netProfit,
-            paidInvoicesCount: paidInvoices || 30,
-            totalInvoicesCount: invoices.length || 40,
-            paidInvoicesPercent: invoices.length > 0 ? Math.round((paidInvoices / invoices.length) * 100) : 76,
-            paymentsMadeCount: paidBills || 120,
-            totalBillsCount: bills.length || 200,
-            paymentsMadePercent: bills.length > 0 ? Math.round((paidBills / bills.length) * 100) : 60,
-          },
-          recentTransactions: txs.length >= 2 ? txs : defaultStats.recentTransactions,
-          salesDynamics: defaultStats.salesDynamics,
-        });
-      } catch (err) {
-        console.warn('Dashboard fallback error:', err);
-      }
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+      setError('Unable to load dashboard data.');
     } finally {
       setLoading(false);
     }
@@ -269,6 +145,14 @@ export function AppDashboard() {
     return '₹' + Math.round(val || 0).toLocaleString('en-IN');
   };
 
+  const formatIndianAbbreviated = (val: number) => {
+    if (!val) return '₹0';
+    if (val >= 10000000) return '₹' + (val / 10000000).toLocaleString('en-IN', { maximumFractionDigits: 2 }) + 'Cr';
+    if (val >= 100000) return '₹' + (val / 100000).toLocaleString('en-IN', { maximumFractionDigits: 2 }) + 'L';
+    if (val >= 1000) return '₹' + (val / 1000).toLocaleString('en-IN', { maximumFractionDigits: 1 }) + 'K';
+    return formatINR(val);
+  };
+
   // Customer Donut Segment Calculations
   const custTotal = stats.customerStats.total || (stats.customerStats.new + stats.customerStats.returning + stats.customerStats.inactive) || 1;
   const newPct = Math.round((stats.customerStats.new / custTotal) * 100);
@@ -280,18 +164,54 @@ export function AppDashboard() {
   const onTrackPct = totalBudgets > 0 ? Math.round((stats.budgetStats.onTrack / totalBudgets) * 100) : 100;
   const overPct = Math.max(0, 100 - onTrackPct);
 
+  if (error) {
+    return (
+      <div className="flex-1 p-6 md:p-8 flex flex-col items-center justify-center min-h-[500px]">
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Unable to load dashboard data.</h2>
+        <p className="text-sm text-slate-500 mb-6">{error}</p>
+        <button onClick={loadLiveData} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 relative">
+      {tooltip.visible && (
+        <div 
+          style={{ 
+            top: tooltip.y, 
+            left: tooltip.x,
+            transform: tooltip.x > window.innerWidth / 2 ? 'translate(-100%, 0)' : 'translate(0, 0)'
+          }} 
+          className="fixed z-50 bg-white border border-slate-200/80 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] rounded-xl p-3.5 pointer-events-none min-w-[150px]"
+        >
+          <div className="text-[13px] font-bold text-slate-900 mb-2.5 pb-2 border-b border-slate-100">{tooltip.title}</div>
+          <div className="space-y-1.5">
+            {tooltip.items.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between gap-6 text-[12px]">
+                <span className="text-slate-500 font-medium flex items-center gap-2">
+                  {item.color && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></span>}
+                  {item.label}
+                </span>
+                <span className="font-bold text-slate-800">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ----------------- ROW 1: TOP 4 METRIC CARDS ----------------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* 1. Total Sales Orders */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between hover:shadow-sm transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Sales Orders</p>
               <h2 className="text-3xl font-extrabold text-slate-900 mt-2">{stats.salesStats.all}</h2>
             </div>
-            <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <ShoppingCart size={20} />
             </div>
           </div>
@@ -302,13 +222,13 @@ export function AppDashboard() {
         </div>
 
         {/* 2. Confirmed Orders */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between hover:shadow-sm transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed Orders</p>
               <h2 className="text-3xl font-extrabold text-slate-900 mt-2">{stats.salesStats.confirmed}</h2>
             </div>
-            <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <CheckCircle2 size={20} />
             </div>
           </div>
@@ -319,7 +239,7 @@ export function AppDashboard() {
         </div>
 
         {/* 3. Customers (Dynamic Real Donut Chart) */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex items-center justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex items-center justify-between hover:shadow-sm transition-shadow">
           {/* Donut graphic (Circumference = 100 with r=15.9155) */}
           <div className="relative w-20 h-20 flex-shrink-0">
             <svg viewBox="0 0 36 36" className="w-20 h-20 transform -rotate-90">
@@ -382,7 +302,7 @@ export function AppDashboard() {
         </div>
 
         {/* 4. Budgets (Dynamic Real Donut Ring Chart) */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex items-center justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex items-center justify-between hover:shadow-sm transition-shadow">
           {/* Donut graphic */}
           <div className="relative w-20 h-20 flex-shrink-0">
             <svg viewBox="0 0 36 36" className="w-20 h-20 transform -rotate-90">
@@ -425,13 +345,13 @@ export function AppDashboard() {
       {/* ----------------- ROW 2: FINANCIAL KPI CARDS ----------------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* 1. Monthly Revenue */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between hover:shadow-sm transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Monthly Revenue</p>
               <h2 className="text-2xl font-black text-slate-900 mt-2">{formatINR(stats.financialStats.monthlyRevenue)}</h2>
             </div>
-            <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <TrendingUp size={20} />
             </div>
           </div>
@@ -442,13 +362,13 @@ export function AppDashboard() {
         </div>
 
         {/* 2. Net Profit */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between hover:shadow-sm transition-shadow">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Profit</p>
               <h2 className="text-2xl font-black text-slate-900 mt-2">{formatINR(stats.financialStats.netProfit)}</h2>
             </div>
-            <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center">
               <DollarSign size={20} />
             </div>
           </div>
@@ -459,7 +379,7 @@ export function AppDashboard() {
         </div>
 
         {/* 3. Paid Invoices (Dynamic Radial Progress) */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex items-center justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex items-center justify-between hover:shadow-sm transition-shadow">
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Paid Invoices</p>
             <h2 className="text-3xl font-extrabold text-slate-900 mt-1">{stats.financialStats.paidInvoicesCount}</h2>
@@ -481,7 +401,7 @@ export function AppDashboard() {
         </div>
 
         {/* 4. Payments Made (Dynamic Radial Progress) */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex items-center justify-between hover:shadow-sm transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex items-center justify-between hover:shadow-sm transition-shadow">
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Payments Made</p>
             <h2 className="text-3xl font-extrabold text-slate-900 mt-1">{stats.financialStats.paymentsMadeCount}</h2>
@@ -506,80 +426,56 @@ export function AppDashboard() {
       {/* ----------------- ROW 3: SALES DYNAMICS & RECENT TRANSACTIONS ----------------- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Sales Dynamics Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-slate-900">Sales Dynamics</h3>
             <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm bg-[#1E3A8A]"></span>
-                <span>Actual</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-[#3B82F6]"></span>
-                <span>Forecast</span>
+                <span>Actual Revenue</span>
               </div>
             </div>
           </div>
 
-          {/* Dual Bar SVG Chart (Original Design & Scale) */}
+          {/* Single Bar SVG Chart */}
           <div className="h-64 w-full relative flex flex-col justify-between">
             {/* Grid lines */}
             <div className="absolute inset-x-0 inset-y-4 flex flex-col justify-between pointer-events-none text-[11px] text-slate-400">
-              <div className="border-b border-dashed border-slate-200/80 w-full flex items-center justify-between">
-                <span>10000</span>
-              </div>
-              <div className="border-b border-dashed border-slate-200/80 w-full flex items-center justify-between">
-                <span>7500</span>
-              </div>
-              <div className="border-b border-dashed border-slate-200/80 w-full flex items-center justify-between">
-                <span>5000</span>
-              </div>
-              <div className="border-b border-dashed border-slate-200/80 w-full flex items-center justify-between">
-                <span>2500</span>
-              </div>
-              <div className="border-b border-slate-200 w-full flex items-center justify-between">
-                <span>0</span>
-              </div>
+              {[1, 0.75, 0.5, 0.25, 0].map(multiplier => {
+                const realMax = Math.max(0, ...stats.salesDynamics.map(d => d.val1));
+                const maxVal = realMax === 0 ? 100 : realMax;
+                return (
+                  <div key={multiplier} className={`border-b ${multiplier === 0 ? 'border-slate-200' : 'border-dashed border-slate-200/80'} w-full flex items-center justify-between`}>
+                    <span>{formatIndianAbbreviated(maxVal * multiplier)}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Bars container */}
-            <div className="relative h-full flex items-end justify-between pl-10 pr-2 pt-4 pb-6 z-10">
-              {[
-                { month: 'Jan', val1: 4000, val2: 2400 },
-                { month: 'Feb', val1: 3000, val2: 1400 },
-                { month: 'Mar', val1: 2000, val2: 9800 },
-                { month: 'Apr', val1: 2800, val2: 3900 },
-                { month: 'May', val1: 1900, val2: 4800 },
-                { month: 'Jun', val1: 2400, val2: 3800 },
-                { month: 'Jul', val1: 3500, val2: 4300 },
-                { month: 'Aug', val1: 4000, val2: 2400 },
-                { month: 'Sep', val1: 5000, val2: 3000 },
-                { month: 'Oct', val1: 4500, val2: 2800 },
-                { month: 'Nov', val1: 6000, val2: 3500 },
-                { month: 'Dec', val1: 7200, val2: 4100 },
-              ].map((item, idx) => {
-                const maxVal = 10000;
+            <div className="relative h-full flex items-end justify-between pl-16 pr-2 pt-4 pb-6 z-10">
+              {stats.salesDynamics.every(d => d.val1 === 0) && (
+                <div className="absolute inset-0 flex items-center justify-center text-[13px] font-medium text-slate-400 z-20">
+                  No sales data available for this period.
+                </div>
+              )}
+              {stats.salesDynamics.map((item, idx) => {
+                const realMax = Math.max(0, ...stats.salesDynamics.map(d => d.val1));
+                const maxVal = realMax === 0 ? 100 : realMax;
                 const h1 = (item.val1 / maxVal) * 100;
-                const h2 = (item.val2 / maxVal) * 100;
 
                 return (
                   <div key={idx} className="flex flex-col items-center gap-1.5 flex-1 group">
-                    <div className="flex items-end gap-1 h-44">
-                      {/* Bar 1: Dark Navy */}
+                    <div className="flex items-end gap-1 h-44 w-full justify-center">
                       <div 
-                        style={{ height: `${h1}%` }} 
-                        className="w-2.5 sm:w-3.5 bg-[#1E3A8A] rounded-t-sm transition-all duration-500 group-hover:brightness-125"
-                        title={`${item.month} Actual: ₹${item.val1}`}
-                      />
-                      {/* Bar 2: Bright Blue */}
-                      <div 
-                        style={{ height: `${h2}%` }} 
-                        className="w-2.5 sm:w-3.5 bg-[#3B82F6] rounded-t-sm transition-all duration-500 group-hover:brightness-110"
-                        title={`${item.month} Forecast: ₹${item.val2}`}
+                        style={{ height: `${h1}%`, minHeight: item.val1 > 0 ? '4px' : '0' }} 
+                        className="w-5 sm:w-7 bg-[#1E3A8A] rounded-t-md transition-all duration-300 hover:brightness-125 cursor-pointer opacity-90 hover:opacity-100"
+                        onMouseEnter={(e) => handleMouseMove(e, item.month, [{label: 'Actual', value: formatINR(item.val1), color: '#1E3A8A'}])}
+                        onMouseLeave={handleMouseLeave}
                       />
                     </div>
                     {/* Month label */}
-                    <span className="text-[11px] font-medium text-slate-500 mt-1">{item.month}</span>
+                    <span className="text-[11px] font-medium text-slate-500 mt-1 group-hover:text-slate-800 transition-colors">{item.month}</span>
                   </div>
                 );
               })}
@@ -588,7 +484,7 @@ export function AppDashboard() {
         </div>
 
         {/* Right 1 Col: Recent Transactions */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-slate-900">Recent Transactions</h3>
             <Link to="/sales/invoices" className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">
@@ -632,53 +528,88 @@ export function AppDashboard() {
       </div>
 
       {/* ----------------- ROW 4: REVENUE TREND CURVE ----------------- */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+      <div className="bg-white rounded-xl border border-slate-200/80 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-slate-900">Revenue Trend</h3>
-          <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-md">Last 6 Weeks</span>
+          <span className="text-xs font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md">Last 6 Weeks</span>
         </div>
 
         {/* Smooth Area Wave Chart with SVG */}
         <div className="relative w-full h-56 pt-2">
           {/* Y-Axis guide lines */}
           <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[11px] text-slate-400 pr-4">
-            <div className="border-b border-dashed border-slate-200/80 flex items-center">36000</div>
-            <div className="border-b border-dashed border-slate-200/80 flex items-center">27000</div>
-            <div className="border-b border-dashed border-slate-200/80 flex items-center">18000</div>
-            <div className="border-b border-dashed border-slate-200/80 flex items-center">9000</div>
-            <div className="border-b border-slate-200 flex items-center">0</div>
+            {[1, 0.75, 0.5, 0.25, 0].map(multiplier => {
+              const realMax = Math.max(0, ...stats.revenueTrend.map(d => d.revenue));
+              const maxRevVal = realMax === 0 ? 100 : realMax;
+              return (
+                <div key={multiplier} className={`border-b ${multiplier === 0 ? 'border-slate-200' : 'border-dashed border-slate-200/80'} flex items-center`}>
+                  {formatIndianAbbreviated(maxRevVal * multiplier)}
+                </div>
+              );
+            })}
           </div>
 
-          <svg viewBox="0 0 600 180" preserveAspectRatio="none" className="w-full h-44 overflow-visible pl-12">
+          <svg viewBox="0 0 600 180" preserveAspectRatio="none" className="w-full h-44 overflow-visible pl-16">
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#C4B5FD" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.15" />
+                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
               </linearGradient>
             </defs>
-            {/* Area Fill */}
-            <path
-              d="M 0 130 Q 100 95 180 100 T 320 120 T 450 65 T 600 20 L 600 180 L 0 180 Z"
-              fill="url(#revenueGradient)"
-            />
-            {/* Smooth Stroke Line */}
-            <path
-              d="M 0 130 Q 100 95 180 100 T 320 120 T 450 65 T 600 20"
-              fill="none"
-              stroke="#7C3AED"
-              strokeWidth="3.5"
-              strokeLinecap="round"
-            />
+            {/* Generate SVG Path dynamically */}
+            {(() => {
+              const realMax = Math.max(0, ...stats.revenueTrend.map(d => d.revenue));
+              const maxRevVal = realMax === 0 ? 100 : realMax;
+              const points = stats.revenueTrend.map((d, i) => {
+                const x = i * 120; // 600 / 5 = 120
+                const y = 140 - ((d.revenue / maxRevVal) * 120); // range 20 to 140
+                return { x, y, data: d };
+              });
+              
+              if (points.length === 0) return null;
+              
+              // Build smooth curve path
+              let dPath = `M ${points[0].x} ${points[0].y}`;
+              for (let i = 1; i < points.length; i++) {
+                const prev = points[i - 1];
+                const curr = points[i];
+                const cpX = (prev.x + curr.x) / 2;
+                dPath += ` C ${cpX} ${prev.y}, ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
+              }
+              
+              const areaPath = `${dPath} L 600 160 L 0 160 Z`;
+
+              return (
+                <>
+                  <path d={areaPath} fill="url(#revenueGradient)" />
+                  <path d={dPath} fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" />
+                  
+                  {/* Invisible hover targets & dots */}
+                  {points.map((p, i) => (
+                    <g key={i} className="group cursor-pointer">
+                      {/* Vertical guide line on hover */}
+                      <line x1={p.x} y1="0" x2={p.x} y2="160" stroke="#CBD5E1" strokeWidth="1" strokeDasharray="4 4" className="opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                      <circle cx={p.x} cy={p.y} r="6" fill="#fff" stroke="#2563EB" strokeWidth="2.5" className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-sm" />
+                      <circle 
+                        cx={p.x} cy={p.y} r="20" fill="transparent" 
+                        onMouseEnter={(e) => handleMouseMove(e, p.data.label, [
+                          {label: 'Date', value: p.data.dateRange},
+                          {label: 'Revenue', value: formatINR(p.data.revenue), color: '#3B82F6'}
+                        ])}
+                        onMouseLeave={handleMouseLeave}
+                      />
+                    </g>
+                  ))}
+                </>
+              );
+            })()}
           </svg>
 
           {/* X Axis Labels */}
-          <div className="flex justify-between text-xs font-medium text-slate-500 pl-12 pr-4 mt-2">
-            <span>Week 1</span>
-            <span>Week 2</span>
-            <span>Week 3</span>
-            <span>Week 4</span>
-            <span>Week 5</span>
-            <span>Week 6</span>
+          <div className="flex justify-between text-xs font-medium text-slate-500 pl-16 pr-0 mt-2">
+            {stats.revenueTrend.map((d, i) => (
+              <span key={i} className="text-center w-12 -ml-6" style={{ marginLeft: i === 0 ? '0' : i === 5 ? '-48px' : '-24px' }}>{d.label}</span>
+            ))}
           </div>
         </div>
       </div>

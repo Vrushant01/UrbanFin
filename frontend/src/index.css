@@ -1,1 +1,140 @@
 @import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased font-sans;
+  }
+}
+
+:root {
+  /* Core Semantic Palette provided by user */
+  --color-primary: #1F3A5F;
+  --color-primary-hover: #18314F;
+  --color-primary-active: #152A43;
+  --color-background: #F6F7F9;
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F1F3F6;
+  --color-border: #DCE1E7;
+
+  --color-text-primary: #172033;
+  --color-text-secondary: #526071;
+  --color-text-muted: #7A8696;
+
+  --color-success: #18794E;
+  --color-success-bg: #EAF7F0;
+  --color-success-border: #B9E5CD;
+  
+  --color-warning: #A15C00;
+  --color-warning-bg: #FFF6E5;
+  --color-warning-border: #F2D49B;
+
+  --color-danger: #B42318;
+  --color-danger-bg: #FDECEC;
+  --color-danger-border: #F3B8B5;
+
+  --color-info: #315E86;
+  --color-info-bg: #EEF4F8;
+  --color-info-border: #C8D9E6;
+}
+
+@theme {
+  /* Override Slate (Neutrals) */
+  --color-slate-50: var(--color-background);
+  --color-slate-100: var(--color-surface-secondary);
+  --color-slate-200: var(--color-border);
+  --color-slate-300: #C4CDD5;
+  --color-slate-400: var(--color-text-muted);
+  --color-slate-500: var(--color-text-secondary);
+  --color-slate-600: var(--color-text-secondary);
+  --color-slate-700: var(--color-text-primary);
+  --color-slate-800: var(--color-text-primary);
+  --color-slate-900: #0F172A;
+
+  /* Override Blue & Indigo & Purple & Pink & Rose (Primary / Accents / Gradients) */
+  /* By mapping all of them to the primary palette, we eliminate the AI neon look */
+  --color-blue-50: var(--color-info-bg);
+  --color-blue-100: var(--color-info-border);
+  --color-blue-200: var(--color-info-border);
+  --color-blue-300: var(--color-primary-hover);
+  --color-blue-400: var(--color-primary-hover);
+  --color-blue-500: var(--color-primary-hover);
+  --color-blue-600: var(--color-primary);
+  --color-blue-700: var(--color-primary-active);
+  --color-blue-800: #102135;
+  --color-blue-900: #0B1726;
+
+  --color-indigo-50: var(--color-info-bg);
+  --color-indigo-100: var(--color-info-border);
+  --color-indigo-200: var(--color-info-border);
+  --color-indigo-300: var(--color-primary-hover);
+  --color-indigo-400: var(--color-primary-hover);
+  --color-indigo-500: var(--color-primary-hover);
+  --color-indigo-600: var(--color-primary);
+  --color-indigo-700: var(--color-primary-active);
+  --color-indigo-800: #102135;
+  --color-indigo-900: #0B1726;
+
+  --color-purple-500: var(--color-primary);
+  --color-purple-600: var(--color-primary);
+  
+  --color-pink-500: var(--color-primary);
+  --color-pink-600: var(--color-primary);
+  
+  --color-rose-500: var(--color-primary);
+  --color-rose-600: var(--color-primary);
+
+  /* Override Emerald & Green (Success) */
+  --color-emerald-50: var(--color-success-bg);
+  --color-emerald-100: var(--color-success-bg);
+  --color-emerald-200: var(--color-success-border);
+  --color-emerald-500: var(--color-success);
+  --color-emerald-600: var(--color-success);
+  --color-emerald-700: #0F5132;
+  --color-emerald-800: #0F5132;
+  --color-green-50: var(--color-success-bg);
+  --color-green-100: var(--color-success-bg);
+  --color-green-200: var(--color-success-border);
+  --color-green-500: var(--color-success);
+  --color-green-600: var(--color-success);
+  --color-green-700: #0F5132;
+  --color-green-800: #0F5132;
+
+  /* Override Amber/Yellow (Warning) */
+  --color-amber-50: var(--color-warning-bg);
+  --color-amber-100: var(--color-warning-bg);
+  --color-amber-200: var(--color-warning-border);
+  --color-amber-500: var(--color-warning);
+  --color-amber-600: var(--color-warning);
+  --color-amber-700: #854D0E;
+  --color-amber-800: #854D0E;
+  --color-yellow-50: var(--color-warning-bg);
+  --color-yellow-100: var(--color-warning-bg);
+  --color-yellow-200: var(--color-warning-border);
+  --color-yellow-500: var(--color-warning);
+  --color-yellow-600: var(--color-warning);
+  --color-yellow-700: #854D0E;
+  --color-yellow-800: #854D0E;
+
+  /* Override Red (Danger) */
+  --color-red-50: var(--color-danger-bg);
+  --color-red-100: var(--color-danger-bg);
+  --color-red-200: var(--color-danger-border);
+  --color-red-500: var(--color-danger);
+  --color-red-600: var(--color-danger);
+  --color-red-700: #991B1B;
+  --color-red-800: #991B1B;
+
+  /* Refine Radius System */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
+
+  /* Refine Shadow System */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.025);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -4px rgba(15, 23, 42, 0.025);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.025);
+}

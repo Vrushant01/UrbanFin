@@ -53,9 +53,9 @@ export function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-slate-100">
+      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-md border border-slate-200/80">
         <div>
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white font-black text-xl flex items-center justify-center shadow-md mb-3">
+          <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-700 to-blue-900 text-white font-black text-xl flex items-center justify-center shadow-sm mb-4">
             UF
           </div>
           <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -68,7 +68,7 @@ export function Login() {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-rose-50 text-rose-800 p-4 rounded-xl text-sm border border-rose-200/80 flex items-start gap-3 shadow-xs">
+            <div className="bg-rose-50 text-rose-800 p-4 rounded-xl text-sm border border-rose-200/80 flex items-start gap-3 shadow-sm">
               <span className="text-rose-600 font-bold text-base">⚠️</span>
               <div>
                 <p className="font-semibold">{error}</p>
@@ -114,7 +114,7 @@ export function Login() {
                 setPassword('Password@123');
                 setError('');
               }}
-              className="px-2 py-2 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer"
+              className="px-2 py-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer"
             >
               👑 Master Admin
             </button>
@@ -125,7 +125,7 @@ export function Login() {
                 setPassword('Password@123');
                 setError('');
               }}
-              className="px-2 py-2 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer"
+              className="px-2 py-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer"
             >
               🛡️ Sub-Admin
             </button>
@@ -136,7 +136,7 @@ export function Login() {
                 setPassword('Password@123');
                 setError('');
               }}
-              className="px-2 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border-purple-200 hover:border-purple-300 text-xs font-semibold rounded-lg border transition-all text-center cursor-pointer"
+              className="px-2 py-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer"
             >
               🏬 Vendor
             </button>
@@ -147,7 +147,7 @@ export function Login() {
                 setPassword('Password@123');
                 setError('');
               }}
-              className="px-2 py-2 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer"
+              className="px-2 py-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer"
             >
               📊 Accountant
             </button>
@@ -158,7 +158,7 @@ export function Login() {
                 setPassword('Password@123');
                 setError('');
               }}
-              className="px-2 py-2 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer col-span-2"
+              className="px-2 py-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-all text-center cursor-pointer col-span-2"
             >
               👤 Customer John
             </button>
@@ -166,11 +166,11 @@ export function Login() {
         </div>
 
         <div className="flex items-center justify-center space-x-3 pt-2 text-sm">
-          <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
             Forgot Password
           </Link>
           <span className="text-slate-300">|</span>
-          <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
             Create Account / Vendor Signup
           </Link>
         </div>

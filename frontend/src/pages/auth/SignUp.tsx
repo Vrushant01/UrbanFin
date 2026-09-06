@@ -121,9 +121,9 @@ export function SignUp() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-6 bg-white p-10 rounded-2xl shadow-xl border border-slate-100">
+      <div className="max-w-md w-full space-y-6 bg-white p-10 rounded-xl shadow-md border border-slate-200/80">
         <div>
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white font-black text-xl flex items-center justify-center shadow-md mb-3">
+          <div className="mx-auto w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-700 to-blue-900 text-white font-black text-xl flex items-center justify-center shadow-sm mb-4">
             UF
           </div>
           <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -141,7 +141,7 @@ export function SignUp() {
             onClick={() => setAccountType('Vendor')}
             className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               accountType === 'Vendor'
-                ? 'bg-purple-600 text-white shadow-sm'
+                ? 'bg-slate-700 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -153,7 +153,7 @@ export function SignUp() {
             onClick={() => setAccountType('Customer')}
             className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               accountType === 'Customer'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -163,10 +163,10 @@ export function SignUp() {
         </div>
 
         {accountType === 'Vendor' && (
-          <div className="bg-purple-50/70 border border-purple-200/70 rounded-xl p-3 text-xs text-purple-900 flex items-start gap-2.5">
-            <Store size={18} className="text-purple-600 mt-0.5 shrink-0" />
+          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs text-slate-700 flex items-start gap-2.5">
+            <Store size={18} className="text-slate-500 mt-0.5 shrink-0" />
             <div>
-              <span className="font-bold">Vendor Partner Access:</span> You will get access to the Vendor Portal to list products, supply stock, receive purchase orders, and submit bills.
+              <span className="font-bold text-slate-800">Vendor Partner Access:</span> You will get access to the Vendor Portal to list products, supply stock, receive purchase orders, and submit bills.
             </div>
           </div>
         )}
@@ -251,7 +251,7 @@ export function SignUp() {
             <Button
               type="submit"
               className={`w-full h-11 text-sm font-bold ${
-                accountType === 'Vendor' ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''
+                accountType === 'Vendor' ? 'bg-slate-700 hover:bg-slate-800 text-white border-transparent' : ''
               }`}
               disabled={!isFormValid || loading}
             >
@@ -262,7 +262,7 @@ export function SignUp() {
 
         <div className="text-center pt-2 text-sm">
           <span className="text-slate-500">Already have an account? </span>
-          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500">
+          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
             Sign In
           </Link>
         </div>

@@ -13,6 +13,7 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Receipt, CheckCircle, CreditCard, Banknote, DollarSign, Landmark, Printer, ArrowLeft, Plus } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { fetchWithCache, clientCache } from '../../utils/clientCache';
+import { AddWithFileModal } from '../../components/ocr/AddWithFileModal';
 
 const DEFAULT_PAYMENT: Partial<Payment> = {
   type: PaymentType.Receive,
@@ -35,6 +36,8 @@ export function ReceiptMaster() {
   
   const [editingPayment, setEditingPayment] = useState<Partial<Payment> | null>(null);
   const [viewingReceipt, setViewingReceipt] = useState<Payment | null>(null);
+  
+  const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('urbanfin_jwt_token');
@@ -76,6 +79,33 @@ export function ReceiptMaster() {
 
   const handleNew = () => {
     setEditingPayment({ ...DEFAULT_PAYMENT });
+    setViewingReceipt(null);
+    setViewMode('form');
+  };
+
+  const handleOcrConfirm = (ocrResult: any, matches: any) => {
+    setIsOcrModalOpen(false);
+    
+    const ocrData = ocrResult.data || {};
+    
+    // Map extracted fields to form
+    const mappedPayment: Partial<Payment> = {
+      ...DEFAULT_PAYMENT,
+      partnerId: matches.customerMatchedId || '',
+      invoiceId: matches.invoiceMatchedId || '',
+      amount: ocrData.amount ? Number(ocrData.amount) : 0,
+      date: ocrData.receipt_date || new Date().toISOString().split('T')[0],
+      note: ocrData.transaction_reference || ocrData.memo || 'Auto-extracted Receipt',
+    };
+
+    // Map Payment via
+    if (ocrData.payment_method) {
+      const pm = ocrData.payment_method.toLowerCase();
+      if (pm.includes('cash')) mappedPayment.via = PaymentVia.Cash;
+      else if (pm.includes('bank') || pm.includes('transfer') || pm.includes('neft') || pm.includes('rtgs')) mappedPayment.via = PaymentVia.Bank;
+    }
+
+    setEditingPayment(mappedPayment);
     setViewingReceipt(null);
     setViewMode('form');
   };
@@ -229,11 +259,13 @@ export function ReceiptMaster() {
   }, [invoices, editingPayment?.partnerId]);
 
   return (
-    <MasterLayout
+    <>
+      <MasterLayout
       title="Sales Receipts"
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       onNew={handleNew}
+      onAddWithFile={() => setIsOcrModalOpen(true)}
       searchTerm={searchTerm}
       onSearchChange={setSearchTerm}
     >
@@ -261,7 +293,7 @@ export function ReceiptMaster() {
               >
                 <div>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold text-indigo-600 text-sm flex items-center gap-1">
+                    <span className="font-semibold text-blue-600 text-sm flex items-center gap-1">
                       <Receipt size={14} /> REC/{new Date(p.date).getFullYear()}/{p.id.slice(0, 5).toUpperCase()}
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
@@ -271,7 +303,7 @@ export function ReceiptMaster() {
                   <h4 className="font-bold text-slate-800 text-base">{(p as any).partnerName || cust?.name || 'Customer'}</h4>
                   <p className="text-xs text-slate-500 mt-0.5">Date: {p.date}</p>
                   {inv && (
-                    <p className="text-xs text-indigo-600 font-mono mt-2 bg-indigo-50 px-2 py-1 rounded inline-block">
+                    <p className="text-xs text-blue-600 font-mono mt-2 bg-blue-50 px-2 py-1 rounded inline-block">
                       Invoice: {inv.number}
                     </p>
                   )}
@@ -323,14 +355,14 @@ export function ReceiptMaster() {
               <div className="border-b border-slate-100 pb-4 flex justify-between items-start">
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                    <Receipt className="text-indigo-600" />
+                    <Receipt className="text-blue-600" />
                     PAYMENT RECEIPT
                   </h2>
                   <p className="text-sm text-slate-500 mt-1">Urban Furniture Accounting System</p>
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Receipt Number</span>
-                  <span className="text-lg font-mono font-bold text-indigo-700">
+                  <span className="text-lg font-mono font-bold text-blue-700">
                     {editingPayment.id
                       ? `REC/${new Date(editingPayment.date || Date.now()).getFullYear()}/${editingPayment.id.slice(0, 5).toUpperCase()}`
                       : 'NEW-RECEIPT'}
@@ -367,7 +399,7 @@ export function ReceiptMaster() {
                     Invoice Reference (Optional)
                   </label>
                   <select
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingPayment.invoiceId || ''}
                     onChange={(e) => {
                       const selectedInv = customerInvoices.find(i => i.id === e.target.value);
@@ -421,7 +453,7 @@ export function ReceiptMaster() {
                     Payment Via / Mode
                   </label>
                   <select
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingPayment.via || PaymentVia.Bank}
                     onChange={(e) => setEditingPayment({ ...editingPayment, via: e.target.value as PaymentVia })}
                   >
@@ -443,12 +475,12 @@ export function ReceiptMaster() {
 
               {/* Razorpay details if available */}
               {editingPayment.razorpayPaymentId && (
-                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
-                  <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider block mb-1">
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                  <span className="text-xs font-bold text-blue-600 uppercase tracking-wider block mb-1">
                     Verified Razorpay Transaction
                   </span>
                   <div className="grid grid-cols-2 gap-4 text-xs font-mono text-slate-700">
-                    <div>Payment ID: <span className="font-bold text-indigo-700">{editingPayment.razorpayPaymentId}</span></div>
+                    <div>Payment ID: <span className="font-bold text-blue-700">{editingPayment.razorpayPaymentId}</span></div>
                     {editingPayment.razorpayOrderId && (
                       <div>Order ID: <span className="text-slate-600">{editingPayment.razorpayOrderId}</span></div>
                     )}
@@ -468,5 +500,11 @@ export function ReceiptMaster() {
         </MasterFormView>
       )}
     </MasterLayout>
+      <AddWithFileModal 
+        isOpen={isOcrModalOpen}
+        onClose={() => setIsOcrModalOpen(false)}
+        onConfirm={handleOcrConfirm}
+      />
+    </>
   );
 }

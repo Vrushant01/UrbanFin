@@ -3,6 +3,7 @@ import {
   login,
   signup,
   forgotPassword,
+  resetPassword,
   createUser,
   logout,
   getMe,
@@ -18,6 +19,7 @@ const router = Router();
 router.post('/login', login);
 router.post('/signup', signup);
 router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.post('/logout', logout);
 router.get('/me', requireAuth, getMe);
 

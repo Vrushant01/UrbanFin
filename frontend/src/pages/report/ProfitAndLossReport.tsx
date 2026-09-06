@@ -104,8 +104,8 @@ export function ProfitAndLossReport() {
       hideNewButton
       hideSearch
     >
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-w-4xl mx-auto px-6 py-2">
+        <div className="flex justify-between items-center mb-6 mt-4 print:hidden">
           <div className="flex items-center gap-4">
             <label className="text-sm font-semibold text-slate-700">Financial Year:</label>
             <select 
@@ -115,7 +115,6 @@ export function ProfitAndLossReport() {
             >
               <option value="2025">2025</option>
               <option value="2026">2026</option>
-              <option value="2027">2027</option>
             </select>
           </div>
           
@@ -124,7 +123,7 @@ export function ProfitAndLossReport() {
           </Button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-none">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-none">
           <div className="p-8 border-b border-slate-200 bg-slate-50 text-center print:bg-transparent">
             <h1 className="text-2xl font-bold text-slate-900 mb-1">Urban Furniture</h1>
             <h2 className="text-xl font-medium text-slate-600">Profit & Loss Statement</h2>
@@ -137,7 +136,7 @@ export function ProfitAndLossReport() {
                 
                 {/* Income Section */}
                 <tr>
-                  <td colSpan={2} className="py-3 font-bold text-lg text-indigo-900 border-b-2 border-slate-800">
+                  <td colSpan={2} className="py-3 font-bold text-lg text-blue-900 border-b-2 border-slate-800">
                     Income
                   </td>
                 </tr>
@@ -149,9 +148,9 @@ export function ProfitAndLossReport() {
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-indigo-50/50">
-                  <td className="py-4 pl-4 font-bold text-indigo-900">Total Income</td>
-                  <td className="py-4 text-right font-bold text-indigo-700 text-lg border-t-2 border-indigo-200">
+                <tr className="bg-blue-50/50">
+                  <td className="py-4 pl-4 font-bold text-blue-900">Total Income</td>
+                  <td className="py-4 text-right font-bold text-blue-700 text-lg border-t-2 border-blue-200">
                     Rs. {(reportData?.totalIncome || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </td>
                 </tr>

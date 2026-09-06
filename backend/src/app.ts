@@ -21,6 +21,7 @@ import portalRoutes from './routes/portalRoutes.js';
 import vendorRoutes from './routes/vendorRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import ocrRoutes from './routes/ocrRoutes.js';
 
 import { seedDatabase, ensureSeeded } from './seed.js';
 
@@ -125,6 +126,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/reports', reportRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/ocr', ocrRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/api/payment-terms', dashboardRoutes);
 

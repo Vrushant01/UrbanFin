@@ -9,10 +9,10 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', ...props }, ref) => {
     const variants = {
-      primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-sm",
-      secondary: "bg-slate-100 text-slate-900 hover:bg-slate-200 focus:ring-slate-500",
-      outline: "border border-slate-300 bg-transparent hover:bg-slate-50 text-slate-700 focus:ring-slate-500",
-      ghost: "bg-transparent hover:bg-slate-100 text-slate-700 focus:ring-slate-500",
+      primary: "bg-blue-700 text-white hover:bg-blue-800 focus:ring-blue-600 shadow-sm border border-transparent transition-all duration-150 active:translate-y-[1px]",
+      secondary: "bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-200 border border-slate-200 shadow-sm transition-all duration-150 active:translate-y-[1px]",
+      outline: "border border-slate-300 bg-transparent hover:bg-slate-50 text-slate-700 focus:ring-slate-200 transition-all duration-150 active:translate-y-[1px]",
+      ghost: "bg-transparent hover:bg-slate-100 text-slate-700 focus:ring-slate-200 transition-all duration-150 active:translate-y-[1px]",
     };
 
     const sizes = {

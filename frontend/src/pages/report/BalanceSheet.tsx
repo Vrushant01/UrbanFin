@@ -132,8 +132,8 @@ export function BalanceSheet() {
       hideNewButton
       hideSearch
     >
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-w-6xl mx-auto px-6 py-2">
+        <div className="flex justify-between items-center mb-6 mt-4 print:hidden">
           <div className="flex items-center gap-4">
             <label className="text-sm font-semibold text-slate-700">Financial Year:</label>
             <select 
@@ -143,7 +143,6 @@ export function BalanceSheet() {
             >
               <option value="2025">2025</option>
               <option value="2026">2026</option>
-              <option value="2027">2027</option>
             </select>
           </div>
           
@@ -164,7 +163,7 @@ export function BalanceSheet() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-none">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-none">
           <div className="p-8 border-b border-slate-200 bg-slate-50 text-center print:bg-transparent">
             <h1 className="text-2xl font-bold text-slate-900 mb-1">Urban Furniture</h1>
             <h2 className="text-xl font-medium text-slate-600">Balance Sheet</h2>
@@ -175,7 +174,7 @@ export function BalanceSheet() {
             
             {/* Assets Column */}
             <div className="p-8">
-              <h3 className="text-xl font-bold text-indigo-900 border-b-2 border-slate-800 pb-3 mb-4">
+              <h3 className="text-xl font-bold text-blue-900 border-b-2 border-slate-800 pb-3 mb-4">
                 Assets
               </h3>
               
@@ -228,9 +227,9 @@ export function BalanceSheet() {
 
                   <tr><td colSpan={2} className="h-8"></td></tr>
 
-                  <tr className="bg-indigo-50/50">
-                    <td className="py-5 pl-4 text-lg font-bold text-indigo-900">Total Assets</td>
-                    <td className="py-5 text-right font-black text-xl text-indigo-700 border-t-2 border-indigo-200 border-b-4">
+                  <tr className="bg-blue-50/50">
+                    <td className="py-5 pl-4 text-lg font-bold text-blue-900">Total Assets</td>
+                    <td className="py-5 text-right font-black text-xl text-blue-700 border-t-2 border-blue-200 border-b-4">
                       Rs. {(reportData?.totalAssets || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </td>
                   </tr>

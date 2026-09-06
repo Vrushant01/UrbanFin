@@ -66,6 +66,25 @@ export const createJournalEntry = async (
   input: CreateJournalEntryInput
 ): Promise<IJournalEntry> => {
   const status = input.status || JournalEntryStatus.Draft;
+
+  // -------------------------------------------------------
+  // DUPLICATE PREVENTION: If a journal entry already exists
+  // for this source transaction, return the existing one.
+  // This handles double-submits, page refreshes, retries.
+  // -------------------------------------------------------
+  if (input.sourceDocument?.model && input.sourceDocument?.id) {
+    const existing = await JournalEntry.findOne({
+      'sourceDocument.model': input.sourceDocument.model,
+      'sourceDocument.id': input.sourceDocument.id,
+    });
+    if (existing) {
+      console.log(
+        `[JournalEntryService] Duplicate prevented: entry already exists for ${input.sourceDocument.model}/${input.sourceDocument.id} → ${existing.number}`
+      );
+      return existing;
+    }
+  }
+
   const balanceCheck = validateJournalEntryBalance(input.lines);
 
   if (status === JournalEntryStatus.Posted && !balanceCheck.isBalanced) {

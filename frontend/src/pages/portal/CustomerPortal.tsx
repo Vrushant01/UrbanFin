@@ -365,75 +365,77 @@ export function CustomerPortal() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
-        <div className="font-bold text-xl flex items-center gap-2">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-            <div className="w-4 h-4 bg-indigo-600 rounded-sm"></div>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col antialiased">
+      <header className="bg-white text-slate-800 h-16 border-b border-slate-200 px-6 md:px-8 flex justify-between items-center z-10 sticky top-0 shadow-sm">
+        <div className="font-bold text-xl text-slate-900 tracking-tight flex items-center gap-3">
+          <div className="w-9 h-9 bg-gradient-to-tr from-blue-700 to-blue-900 text-white rounded-lg flex items-center justify-center font-black text-sm shadow-sm">
+            UF
           </div>
           Urban Furnitures
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium">{currentUser?.name}</span>
+        <div className="flex items-center gap-5">
+          <span className="text-sm font-bold text-slate-700">{currentUser?.name}</span>
           <button 
             onClick={logout}
-            className="p-2 hover:bg-indigo-700 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors cursor-pointer focus:outline-none"
             title="Logout"
           >
-            <LogOut size={20} />
+            <LogOut size={19} />
           </button>
         </div>
       </header>
 
-      <main className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full">
+      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
         {/* Payment Request Banner */}
         {pendingRequests.length > 0 && (
-          <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white p-5 rounded-2xl shadow-lg mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 shadow-inner">
-                <Send className="w-5 h-5 text-yellow-300 animate-bounce" />
+          <div className="bg-white border border-amber-200 p-5 rounded-xl shadow-sm mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 border border-amber-100">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-base tracking-tight flex items-center gap-2">
+                <h3 className="font-bold text-[15px] text-slate-900 flex items-center gap-2">
                   Payment Request from Accounting
-                  <span className="bg-yellow-400 text-indigo-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-xs">
+                  <span className="bg-amber-100 text-amber-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md">
                     Action Required
                   </span>
                 </h3>
-                <p className="text-white/85 text-xs mt-0.5 leading-relaxed">
-                  You have <span className="font-bold underline">{pendingRequests.length} invoice(s)</span> with an active payment request sent to you. Please pay below to settle your account.
+                <p className="text-slate-500 text-xs mt-0.5">
+                  You have <span className="font-bold text-slate-700">{pendingRequests.length} invoice(s)</span> with an active payment request. Please pay below to settle your account.
                 </p>
               </div>
             </div>
             <button
               onClick={() => handlePayNowClick(pendingRequests[0])}
-              className="bg-white text-indigo-700 hover:bg-yellow-300 hover:text-indigo-900 font-bold px-4 py-2 rounded-xl text-xs shadow-md transition-all whitespace-nowrap flex items-center gap-1.5"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-5 py-2.5 rounded-lg text-xs shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5 active:translate-y-[1px]"
             >
               <CreditCard size={14} /> Pay Invoice ({pendingRequests[0].number})
             </button>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-200 bg-white flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <FileText className="text-indigo-600" />
-              <h1 className="text-xl font-bold text-slate-800">My Invoices</h1>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                <FileText size={16} />
+              </div>
+              <h1 className="text-lg font-bold text-slate-900">My Invoices</h1>
             </div>
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-[13px] text-slate-500 font-medium">
               Showing only your invoices ({invoices.length})
             </span>
           </div>
           
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                 <tr>
-                  <th className="p-4 pl-6">Invoice</th>
-                  <th className="p-4">Invoice Date</th>
-                  <th className="p-4">Due Date</th>
-                  <th className="p-4 text-right">Amount Due</th>
-                  <th className="p-4 text-center">Status</th>
+                  <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Invoice</th>
+                  <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Invoice Date</th>
+                  <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Due Date</th>
+                  <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Amount Due</th>
+                  <th className="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -459,26 +461,26 @@ export function CustomerPortal() {
                   const isPaid = inv.status === CustomerInvoiceStatus.Paid || (total > 0 && due <= 0);
                   
                   return (
-                    <tr key={inv.id} className="hover:bg-slate-50 transition-colors group">
-                      <td className="p-4 pl-6">
-                        <div className="font-semibold text-slate-800 flex items-center gap-2 flex-wrap">
+                    <tr key={inv.id} className="hover:bg-slate-50 transition-colors group border-b border-slate-100 last:border-0">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-slate-900 flex items-center gap-2 flex-wrap text-[14px]">
                           <span>{inv.number}</span>
                           {inv.paymentRequested && !isPaid && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                               <Send size={10} /> Payment Requested
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="p-4 text-slate-600">{inv.invoiceDate}</td>
-                      <td className="p-4 text-slate-600">{inv.dueDate}</td>
-                      <td className="p-4 text-right font-bold text-slate-700">
+                      <td className="px-6 py-4 text-[14px] text-slate-600 font-medium">{inv.invoiceDate}</td>
+                      <td className="px-6 py-4 text-[14px] text-slate-600 font-medium">{inv.dueDate}</td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-900 text-[15px]">
                         Rs. {due.toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="px-6 py-4 text-center">
                         {isPaid ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-                            <CheckCircle size={14} /> PAID
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+                            <CheckCircle size={13} /> PAID
                           </span>
                         ) : (
                           <Button 
@@ -486,13 +488,9 @@ export function CustomerPortal() {
                             size="sm" 
                             disabled={isProcessing}
                             onClick={() => handlePayNowClick(inv)}
-                            className={
-                              inv.paymentRequested
-                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md text-white font-bold gap-1 px-3 py-1 text-xs'
-                                : 'bg-indigo-600 hover:bg-indigo-700 shadow-sm disabled:opacity-50 text-xs'
-                            }
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[13px] px-4 py-2 rounded-lg shadow-sm disabled:opacity-50 transition-all active:translate-y-[1px] w-full max-w-[120px] mx-auto flex items-center justify-center gap-2"
                           >
-                            <CreditCard size={13} />
+                            <CreditCard size={14} />
                             {isProcessing && payingInvoice?.id === inv.id ? 'Processing...' : 'Pay Bill'}
                           </Button>
                         )}
@@ -509,7 +507,7 @@ export function CustomerPortal() {
       {/* Lightweight Portal Payment Modal */}
       {payingInvoice && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative transition-all">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative transition-all">
             
             {paymentSuccess ? (
               <div className="p-10 text-center flex flex-col items-center">
@@ -539,7 +537,7 @@ export function CustomerPortal() {
                     </div>
                   )}
 
-                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 space-y-2">
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 space-y-2">
                     {(() => {
                       const rawLineTotal = (payingInvoice.lines || []).reduce(
                         (sum, l) => sum + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0),
@@ -554,19 +552,19 @@ export function CustomerPortal() {
                             <span>Untaxed Subtotal:</span>
                             <span className="font-semibold text-slate-800">Rs. {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                           </div>
-                          <div className="flex justify-between text-xs text-indigo-700">
+                          <div className="flex justify-between text-xs text-blue-700">
                             <span>GST (18% - CGST 9% + SGST 9%):</span>
                             <span className="font-bold">+ Rs. {totalGst.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                           </div>
-                          <div className="pt-2 border-t border-indigo-200 text-center">
-                            <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-0.5">Total Amount Due (Incl. 18% GST)</p>
-                            <p className="text-3xl font-black text-indigo-700">
+                          <div className="pt-2 border-t border-blue-200 text-center">
+                            <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-0.5">Total Amount Due (Incl. 18% GST)</p>
+                            <p className="text-3xl font-black text-blue-700">
                               Rs. {due.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                               })}
                             </p>
                           </div>
-                          <p className="text-center text-[11px] text-indigo-500">Invoice Ref: {payingInvoice.number}</p>
+                          <p className="text-center text-[11px] text-blue-500">Invoice Ref: {payingInvoice.number}</p>
                         </>
                       );
                     })()}
@@ -579,7 +577,7 @@ export function CustomerPortal() {
                         type="button"
                         onClick={() => setPaymentMethod('card')}
                         className={`p-3 rounded-lg border-2 flex items-center justify-center gap-2 font-medium transition-all
-                          ${paymentMethod === 'card' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                          ${paymentMethod === 'card' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
                       >
                         <CreditCard size={18} /> Card
                       </button>
@@ -587,7 +585,7 @@ export function CustomerPortal() {
                         type="button"
                         onClick={() => setPaymentMethod('bank')}
                         className={`p-3 rounded-lg border-2 flex items-center justify-center gap-2 font-medium transition-all
-                          ${paymentMethod === 'bank' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                          ${paymentMethod === 'bank' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
                       >
                         <CheckCircle size={18} /> Net Banking
                       </button>

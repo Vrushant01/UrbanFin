@@ -48,7 +48,7 @@ export function MasterKanbanView<T>({
       <div className="p-6 flex-1 overflow-y-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3 animate-pulse">
+            <div key={i} className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm space-y-3 animate-pulse">
               <div className="w-12 h-12 rounded-xl bg-slate-200" />
               <div className="w-3/4 h-4 rounded bg-slate-200" />
               <div className="w-1/2 h-3 rounded bg-slate-100" />

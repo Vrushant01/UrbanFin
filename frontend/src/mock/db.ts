@@ -746,6 +746,21 @@ export const mockDb = {
 
   // Analytic Accounts
   getAnalyticAccounts: (): AnalyticAccount[] => JSON.parse(localStorage.getItem(ANALYTIC_ACCOUNTS_KEY) || '[]'),
+  getEligibleAnalyticAccounts: (): AnalyticAccount[] => {
+    const analytics = mockDb.getAnalyticAccounts();
+    const budgets = mockDb.getBudgets().filter(b => b.status === BudgetStatus.Confirmed);
+    
+    const exhaustedAccountIds = new Set<string>();
+    for (const budget of budgets) {
+      for (const line of budget.lines || []) {
+        if (line.committedAmount > 0 && line.achievedAmount >= line.committedAmount) {
+          exhaustedAccountIds.add(line.analyticAccountId);
+        }
+      }
+    }
+    
+    return analytics.filter(a => !exhaustedAccountIds.has(a.id));
+  },
   saveAnalyticAccounts: (analytics: AnalyticAccount[]) => localStorage.setItem(ANALYTIC_ACCOUNTS_KEY, JSON.stringify(analytics)),
   addAnalyticAccount: (analytic: Omit<AnalyticAccount, 'id'>): AnalyticAccount => {
     const analytics = mockDb.getAnalyticAccounts();

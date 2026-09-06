@@ -10,6 +10,7 @@ interface MasterLayoutProps {
   viewMode: 'list' | 'kanban' | 'form';
   onViewModeChange?: (mode: 'list' | 'kanban') => void;
   onNew?: () => void;
+  onAddWithFile?: () => void;
   onBack?: () => void;
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
@@ -28,6 +29,7 @@ export function MasterLayout({
   viewMode,
   onViewModeChange,
   onNew,
+  onAddWithFile,
   onBack,
   searchTerm = '',
   onSearchChange,
@@ -50,7 +52,7 @@ export function MasterLayout({
       {!hideTabs && <ModuleTabs />}
 
       {/* Action Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5 print:hidden">
         <div className="flex items-center gap-3">
           {viewMode === 'form' && onBack && (
             <button 
@@ -85,7 +87,7 @@ export function MasterLayout({
                   placeholder="Search entire database..."
                   value={searchTerm}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-9 h-10 w-full bg-white border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500 shadow-xs"
+                  className="pl-9 h-10 w-full bg-white border-slate-200 rounded-lg text-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500 shadow-sm"
                 />
               </div>
             )}
@@ -96,14 +98,14 @@ export function MasterLayout({
                 <button
                   type="button"
                   onClick={() => setShowFilterMenu(!showFilterMenu)}
-                  className="h-10 px-3.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
+                  className="h-10 px-3.5 bg-white border border-slate-200 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2 shadow-sm cursor-pointer transition-colors"
                 >
                   <Filter size={16} className="text-slate-400" />
                   <span>Filters</span>
                 </button>
                 
                 {showFilterMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-30">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-md border border-slate-200 py-2 z-30">
                     <div className="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Filter By</div>
                     {filterOptions.map((opt) => (
                       <button
@@ -114,7 +116,7 @@ export function MasterLayout({
                         }}
                         className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between ${
                           activeFilter === opt.value
-                            ? 'bg-blue-50 text-blue-600 font-medium'
+                            ? 'bg-blue-50 text-blue-700 font-medium'
                             : 'text-slate-700 hover:bg-slate-50'
                         }`}
                       >
@@ -130,44 +132,54 @@ export function MasterLayout({
             {/* View Mode Toggle Switcher */}
             {onViewModeChange && (
               <div 
-                className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/90 shadow-2xs gap-0.5"
+                className="flex items-center bg-slate-100 p-1 rounded-md border border-slate-200 shadow-sm gap-0.5"
                 role="group"
                 aria-label="View mode switcher"
               >
                 <button
                   type="button"
                   onClick={() => onViewModeChange('list')}
-                  className={`flex items-center justify-center h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-lg cursor-pointer transition-all duration-150 ${
+                  className={`flex items-center justify-center h-8 w-8 rounded-sm cursor-pointer transition-all duration-150 ${
                     viewMode === 'list' 
-                      ? 'bg-white text-blue-600 shadow-xs font-bold ring-1 ring-slate-200/80 scale-[1.02]' 
-                      : 'text-slate-400 hover:text-slate-700 hover:bg-white/60'
+                      ? 'bg-white text-blue-700 shadow-sm font-bold border border-slate-200/60' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                   }`}
                   title="List View"
                   aria-pressed={viewMode === 'list'}
                 >
-                  <LayoutList size={18} className={viewMode === 'list' ? 'text-blue-600 stroke-[2.2]' : 'text-slate-400'} />
+                  <LayoutList size={18} className={viewMode === 'list' ? 'text-blue-700' : 'text-slate-500'} />
                 </button>
                 <button
                   type="button"
                   onClick={() => onViewModeChange('kanban')}
-                  className={`flex items-center justify-center h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-lg cursor-pointer transition-all duration-150 ${
+                  className={`flex items-center justify-center h-8 w-8 rounded-sm cursor-pointer transition-all duration-150 ${
                     viewMode === 'kanban' 
-                      ? 'bg-white text-blue-600 shadow-xs font-bold ring-1 ring-slate-200/80 scale-[1.02]' 
-                      : 'text-slate-400 hover:text-slate-700 hover:bg-white/60'
+                      ? 'bg-white text-blue-700 shadow-sm font-bold border border-slate-200/60' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                   }`}
                   title="Kanban Grid View"
                   aria-pressed={viewMode === 'kanban'}
                 >
-                  <LayoutGrid size={18} className={viewMode === 'kanban' ? 'text-blue-600 stroke-[2.2]' : 'text-slate-400'} />
+                  <LayoutGrid size={18} className={viewMode === 'kanban' ? 'text-blue-700' : 'text-slate-500'} />
                 </button>
               </div>
             )}
-            
+            {/* Add with File Button */}
+            {onAddWithFile && (
+              <button
+                onClick={onAddWithFile}
+                className="h-10 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-md flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer whitespace-nowrap active:translate-y-[1px]"
+              >
+                <Plus size={18} className="text-slate-500" />
+                <span>Add with File</span>
+              </button>
+            )}
+
             {/* New Button */}
             {!hideNewButton && onNew && (
               <button
                 onClick={onNew}
-                className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+                className="h-10 px-4 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium rounded-md flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer whitespace-nowrap active:translate-y-[1px]"
               >
                 <Plus size={18} />
                 <span>New</span>
@@ -178,7 +190,7 @@ export function MasterLayout({
       </div>
 
       {/* Content Container */}
-      <div className="flex-1 rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+      <div className="flex-1 rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden print:border-none print:shadow-none print:rounded-none">
         {children}
       </div>
     </div>

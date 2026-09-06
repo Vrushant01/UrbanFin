@@ -226,7 +226,7 @@ export function PaymentMaster() {
               >
                 <div>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold text-indigo-600 text-sm flex items-center gap-1">
+                    <span className="font-semibold text-blue-600 text-sm flex items-center gap-1">
                       <Banknote size={14} /> PAY/{new Date(p.date).getFullYear()}/{p.id.slice(0, 5).toUpperCase()}
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
@@ -285,14 +285,14 @@ export function PaymentMaster() {
               <div className="border-b border-slate-100 pb-4 flex justify-between items-start">
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                    <Banknote className="text-indigo-600" />
+                    <Banknote className="text-blue-600" />
                     PAYMENT VOUCHER
                   </h2>
                   <p className="text-sm text-slate-500 mt-1">Urban Furniture Accounting System</p>
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Payment Number</span>
-                  <span className="text-lg font-mono font-bold text-indigo-700">
+                  <span className="text-lg font-mono font-bold text-blue-700">
                     {editingPayment.id
                       ? `PAY/${new Date(editingPayment.date || Date.now()).getFullYear()}/${editingPayment.id.slice(0, 5).toUpperCase()}`
                       : 'NEW-PAYMENT'}
@@ -328,7 +328,7 @@ export function PaymentMaster() {
                     Bill Reference (Optional)
                   </label>
                   <select
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingPayment.billId || ''}
                     onChange={(e) => {
                       const selectedBill = vendorBills.find(b => b.id === e.target.value);
@@ -382,7 +382,7 @@ export function PaymentMaster() {
                     Payment Via / Mode
                   </label>
                   <select
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingPayment.via || PaymentVia.Bank}
                     onChange={(e) => setEditingPayment({ ...editingPayment, via: e.target.value as PaymentVia })}
                   >

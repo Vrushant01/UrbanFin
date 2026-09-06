@@ -143,7 +143,7 @@ export function ContactMaster() {
         <div className="w-20 h-20 rounded-full bg-slate-100 border-4 border-white shadow-sm flex items-center justify-center text-slate-400 mb-4"><User size={32} /></div>
       }
       <h3 className="font-bold text-slate-800 text-lg line-clamp-1">{c.name}</h3>
-      <span className="inline-block px-2 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded mt-1 mb-3">
+      <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded mt-1 mb-3">
         {c.type}
       </span>
       <p className="text-sm text-slate-500 w-full truncate">{c.email}</p>
@@ -258,7 +258,7 @@ export function ContactMaster() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
                   <select 
-                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={editingContact.type || ContactType.Customer}
                     onChange={e => setEditingContact({ ...editingContact, type: e.target.value as ContactType })}
                   >
@@ -298,7 +298,7 @@ export function ContactMaster() {
                   <input 
                     type="checkbox" 
                     id="hasPortalAccess"
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
                     checked={editingContact.hasPortalAccess || false}
                     onChange={e => setEditingContact({ ...editingContact, hasPortalAccess: e.target.checked })}
                   />

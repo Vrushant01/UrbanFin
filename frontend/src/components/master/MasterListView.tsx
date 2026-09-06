@@ -32,14 +32,12 @@ export function MasterListView<T>({
   const globalLoading = useGlobalLoading();
   const isLoading = propLoading !== undefined ? propLoading : globalLoading;
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(initialPageSize);
 
   // Reset to page 1 whenever data or filter changes
   useEffect(() => {
     setCurrentPage(1);
-    setSelectedIds(new Set());
   }, [data.length]);
 
   const totalRecords = data.length;
@@ -54,25 +52,6 @@ export function MasterListView<T>({
 
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRecord = Math.min(currentPage * pageSize, totalRecords);
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === paginatedData.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(paginatedData.map(keyExtractor)));
-    }
-  };
-
-  const toggleSelect = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // prevent row click
-    const next = new Set(selectedIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    setSelectedIds(next);
-  };
 
   // Generate page numbers to display
   const getPageNumbers = () => {
@@ -136,28 +115,20 @@ export function MasterListView<T>({
     <div className="flex flex-col h-full relative">
       {/* Active syncing progress line */}
       {isLoading && (
-        <div className="h-[2px] w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 animate-pulse" />
+        <div className="h-[2px] w-full bg-gradient-to-r from-blue-500 via-blue-500 to-slate-500 animate-pulse" />
       )}
       {/* Table Container */}
       <div className="overflow-x-auto flex-1">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider">
-              <th className="py-3.5 px-4 w-12 text-center">
-                <input 
-                  type="checkbox" 
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length}
-                  onChange={toggleSelectAll}
-                />
-              </th>
+            <tr className="bg-slate-50 border-y border-slate-200 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
               {showSrNo && (
-                <th className="py-3.5 px-4 w-20 text-slate-600 font-bold whitespace-nowrap">
+                <th className="py-3 px-4 w-20 text-slate-500 font-bold whitespace-nowrap">
                   SR. NO.
                 </th>
               )}
               {columns.map(col => (
-                <th key={col.key} className="py-3.5 px-4 text-slate-600 font-bold whitespace-nowrap">
+                <th key={col.key} className="py-3 px-4 text-slate-500 font-bold whitespace-nowrap">
                   {col.header}
                 </th>
               ))}
@@ -166,31 +137,20 @@ export function MasterListView<T>({
           <tbody className="divide-y divide-slate-100">
             {paginatedData.map((item, index) => {
               const id = keyExtractor(item);
-              const isSelected = selectedIds.has(id);
               const globalIndex = (currentPage - 1) * pageSize + index + 1;
               return (
                 <tr 
                   key={id} 
-                  className={`hover:bg-blue-50/40 cursor-pointer transition-colors ${
-                    isSelected ? 'bg-blue-50/60' : 'bg-white'
-                  }`}
+                  className="hover:bg-slate-50/80 cursor-pointer transition-colors bg-white group"
                   onClick={() => onRowClick(item)}
                 >
-                  <td className="py-3.5 px-4 text-center w-12" onClick={(e) => toggleSelect(e, id)}>
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      checked={isSelected}
-                      readOnly
-                    />
-                  </td>
                   {showSrNo && (
                     <td className="py-3.5 px-4 text-xs font-semibold text-slate-500 whitespace-nowrap">
                       {globalIndex}
                     </td>
                   )}
                   {columns.map(col => (
-                    <td key={col.key} className="py-3.5 px-4 text-sm text-slate-700 align-middle whitespace-nowrap">
+                    <td key={col.key} className="py-3.5 px-4 text-[13px] text-slate-700 align-middle whitespace-nowrap">
                       {col.render ? col.render(item, index) : String((item as any)[col.key] || '')}
                     </td>
                   ))}
@@ -267,7 +227,7 @@ export function MasterListView<T>({
                     onClick={() => setCurrentPage(pageNum)}
                     className={`min-w-[28px] h-7 px-2 rounded text-xs font-bold transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-2xs'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
                     }`}
                   >

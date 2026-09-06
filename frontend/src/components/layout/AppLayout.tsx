@@ -86,17 +86,19 @@ export function AppLayout() {
   const userInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'A';
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row antialiased text-slate-800 relative">
+    <div className="h-screen w-full bg-[#F8FAFC] flex flex-col md:flex-row antialiased text-slate-800 relative overflow-hidden print:h-auto print:overflow-visible print:bg-white">
       {/* Global Top Fetch / DB Sync Loading Bar */}
-      <GlobalLoadingBar />
+      <div className="print:hidden">
+        <GlobalLoadingBar />
+      </div>
 
       {/* Mobile Topbar */}
-      <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-xs z-30">
+      <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center z-30 shrink-0 print:hidden">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white font-extrabold text-sm flex items-center justify-center shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-700 to-blue-900 text-white font-extrabold text-sm flex items-center justify-center shadow-sm">
             UF
           </div>
-          <span className="font-bold text-slate-900 text-lg">Urban Furniture</span>
+          <span className="font-bold text-slate-900 text-lg">UrbanFin ERP</span>
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -108,22 +110,22 @@ export function AppLayout() {
 
       {/* Sidebar */}
       <aside className={cn(
-        "bg-white border-r border-slate-200/90 w-64 flex-shrink-0 flex-col transition-transform duration-300 ease-in-out z-20 shadow-2xs",
-        "fixed md:relative inset-y-0 left-0 transform",
+        "bg-white border-r border-slate-200/90 w-64 flex-shrink-0 flex-col transition-transform duration-300 ease-in-out z-20 shadow-sm print:hidden",
+        "fixed md:relative inset-y-0 left-0 transform h-full",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         {/* Brand Logo Header */}
-        <div className="h-20 flex items-center px-6 gap-3 border-b border-slate-100 hidden md:flex">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white font-black text-sm flex items-center justify-center shadow-xs">
+        <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-100 hidden md:flex mb-2 mt-2 shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-700 to-blue-900 text-white font-black text-sm flex items-center justify-center shadow-sm">
             UF
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-slate-900 text-base leading-tight">Urban Furniture</span>
+            <span className="font-bold text-slate-900 text-base leading-tight">UrbanFin ERP</span>
           </div>
         </div>
         
         {/* Menu Section */}
-        <div className="flex-1 py-4 px-4 overflow-y-auto">
+        <div className="flex-1 py-4 px-4 overflow-y-auto h-[calc(100%-5rem)]">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-3">
             MAIN MENU
           </div>
@@ -140,13 +142,13 @@ export function AppLayout() {
                   to={item.to}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={cn(
-                    "flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all",
+                    "flex items-center gap-3 px-3.5 py-2.5 rounded-md text-[14px] font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/50",
                     isActive 
-                      ? "bg-slate-100/90 text-slate-900 font-bold shadow-2xs border border-slate-200/60" 
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50/80"
+                      ? "bg-blue-50 text-blue-700 font-bold" 
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                   )}
                 >
-                  <span className={isActive ? "text-blue-600" : "text-slate-400"}>
+                  <span className={isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-500"}>
                     {item.icon}
                   </span>
                   <span>{item.label}</span>
@@ -158,44 +160,43 @@ export function AppLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden print:h-auto print:overflow-visible">
         {/* Topbar */}
-        <header className="h-20 bg-white border-b border-slate-200/80 flex items-center justify-between px-6 md:px-8 shadow-2xs z-10">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 md:px-8 z-10 sticky top-0 print:hidden">
           {/* Page Title & Badges */}
           <div className="flex items-center gap-3 md:gap-4 flex-wrap">
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
               {getPageTitle()}
             </h1>
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/80 rounded-lg text-xs font-semibold text-slate-600 shadow-2xs">
-              <Calendar size={13} className="text-slate-400" />
-              <span>Financial Year 2026</span>
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px] font-medium text-slate-500">
+              <Calendar size={12} className="text-slate-400" />
+              <span>FY 2026</span>
             </div>
             {/* Live Database Sync Indicator */}
             <DatabaseStatusIndicator />
           </div>
           
           {/* Header Right (User Avatar, Logout) */}
-          <div className="flex items-center space-x-4">
-
+          <div className="flex items-center space-x-5">
             {/* User Info */}
-            <div className="flex items-center gap-3 pl-2 border-l border-slate-200">
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
               <div className="text-right hidden sm:block">
-                <div className="text-sm font-bold text-slate-900 leading-tight flex items-center justify-end gap-1">
+                <div className="text-[13px] font-bold text-slate-900 leading-none flex items-center justify-end gap-1 mb-1">
                   {currentUser?.name || 'Admin User'}
-                  {role === Role.MasterAdmin && <span className="text-amber-500 font-black text-xs">👑</span>}
+                  {role === Role.MasterAdmin && <span className="text-blue-600 font-black text-xs">◆</span>}
                 </div>
-                <div className="text-xs font-semibold text-slate-500">
+                <div className="text-[11px] font-medium text-slate-500 leading-none">
                   {role === Role.MasterAdmin ? (
-                    <span className="text-amber-700 font-bold">Master Admin</span>
+                    <span className="text-blue-600 font-bold">Master Admin</span>
                   ) : role === Role.SubAdmin ? (
-                    <span className="text-indigo-600 font-bold">Sub-Admin</span>
+                    <span className="text-slate-700 font-bold">Sub-Admin</span>
                   ) : (
                     role || 'Administrator'
                   )}
                 </div>
               </div>
-              <div className={`w-9 h-9 rounded-full font-bold text-sm flex items-center justify-center shadow-xs text-white ${
-                role === Role.MasterAdmin ? 'bg-amber-500' : role === Role.SubAdmin ? 'bg-indigo-600' : 'bg-purple-600'
+              <div className={`w-8 h-8 rounded-md font-bold text-xs flex items-center justify-center text-white ${
+                role === Role.MasterAdmin ? 'bg-blue-700' : role === Role.SubAdmin ? 'bg-slate-700' : 'bg-slate-500'
               }`}>
                 {userInitial}
               </div>
@@ -213,8 +214,8 @@ export function AppLayout() {
         </header>
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 p-6 md:p-8 bg-[#F8FAFC] overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 p-6 md:p-8 bg-[#F8FAFC] overflow-y-auto print:p-0 print:m-0 print:bg-white print:overflow-visible">
+          <div className="max-w-7xl mx-auto print:max-w-none print:w-full print:mx-0">
             <Outlet />
           </div>
         </main>

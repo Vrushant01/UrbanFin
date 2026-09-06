@@ -61,7 +61,7 @@ const journalEntrySchema = new Schema<IJournalEntry>(
       default: 0,
     },
     sourceDocument: {
-      model: { type: String, enum: ['VendorBill', 'CustomerInvoice'] },
+      model: { type: String, enum: ['VendorBill', 'CustomerInvoice', 'Payment'] },
       id: { type: String },
     },
   },
@@ -83,6 +83,11 @@ journalEntrySchema.index({ journalId: 1, date: -1 });
 journalEntrySchema.index({ partnerId: 1, date: -1 });
 journalEntrySchema.index({ status: 1, date: -1 });
 journalEntrySchema.index({ createdAt: -1 });
+// Sparse unique index: prevents duplicate auto-posted entries for the same source transaction
+journalEntrySchema.index(
+  { 'sourceDocument.model': 1, 'sourceDocument.id': 1 },
+  { unique: true, sparse: true, partialFilterExpression: { 'sourceDocument.id': { $exists: true } } }
+);
 
 export const JournalEntry: Model<IJournalEntry> =
   mongoose.models.JournalEntry ||

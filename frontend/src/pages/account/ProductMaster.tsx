@@ -51,7 +51,7 @@ export function ProductMaster() {
     }
 
     try {
-      const cData = await fetchWithCache<Category[]>('/api/products/categories');
+      const cData = await fetchWithCache<Category[]>('/api/categories');
       setCategories(cData);
     } catch {
       setCategories(mockDb.getCategories());
@@ -183,7 +183,7 @@ export function ProductMaster() {
         return (
           <div>
             <span className="font-semibold text-slate-900">Rs. {p.salesPrice.toFixed(2)}</span>
-            <span className="block text-[10px] font-bold text-indigo-600">Rs. {totalWithGst.toFixed(2)} (18% GST)</span>
+            <span className="block text-[10px] font-bold text-blue-600">Rs. {totalWithGst.toFixed(2)} (18% GST)</span>
           </div>
         );
       } 
@@ -205,7 +205,7 @@ export function ProductMaster() {
             <span className="bg-white/90 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded text-slate-700 shadow-sm">
               {categories.find(c => c.id === p.categoryId)?.name || 'Uncategorized'}
             </span>
-            <span className="bg-indigo-600/90 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded text-white shadow-sm">
+            <span className="bg-blue-600/90 backdrop-blur-sm text-xs font-medium px-2 py-1 rounded text-white shadow-sm">
               {p.type}
             </span>
           </div>
@@ -221,7 +221,7 @@ export function ProductMaster() {
             <div>
               <p className="text-slate-400 text-xs font-medium">Sales Price</p>
               <p className="font-bold text-slate-800">Rs. {p.salesPrice.toFixed(2)}</p>
-              <p className="text-[10px] font-bold text-indigo-600">Rs. {totalWithGst.toFixed(2)} (incl. GST)</p>
+              <p className="text-[10px] font-bold text-blue-600">Rs. {totalWithGst.toFixed(2)} (incl. GST)</p>
             </div>
             <div>
               <p className="text-slate-400 text-xs font-medium">Cost</p>
@@ -340,7 +340,7 @@ export function ProductMaster() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
                   <select 
-                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={editingProduct.type || ProductType.Goods}
                     onChange={e => setEditingProduct({ ...editingProduct, type: e.target.value as ProductType })}
                   >
@@ -357,7 +357,7 @@ export function ProductMaster() {
                   <input
                     list="categories-list"
                     required
-                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Select or type new category"
                     value={categoryInput}
                     onChange={e => setCategoryInput(e.target.value)}

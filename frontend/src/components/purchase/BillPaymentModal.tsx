@@ -38,9 +38,9 @@ export function BillPaymentModal({ bill, vendor, amountDue, onClose, onSuccess }
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-xl shadow-md w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center gap-2 text-indigo-700">
+          <div className="flex items-center gap-2 text-blue-700">
             <Receipt size={20} />
             <h3 className="font-bold text-lg">Register Payment</h3>
           </div>
@@ -51,10 +51,10 @@ export function BillPaymentModal({ bill, vendor, amountDue, onClose, onSuccess }
 
         <div className="p-6 space-y-5 overflow-y-auto">
           
-          <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex justify-between items-center">
+          <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
             <div>
               <p className="text-sm font-medium text-slate-500 mb-0.5">Amount Due</p>
-              <p className="text-xl font-bold text-indigo-700">Rs. {amountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xl font-bold text-blue-700">Rs. {amountDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </div>
             <div className="text-right">
               <p className="text-sm font-medium text-slate-500 mb-0.5">Vendor</p>

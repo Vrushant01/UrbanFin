@@ -183,7 +183,7 @@ export function AnalyticAccountsMaster() {
         <div className="flex flex-col items-center justify-center h-64 text-slate-500">
           <PieChart size={48} className="mb-4 text-slate-300" />
           <p>Kanban view is not available for Analytic Accounts.</p>
-          <button onClick={() => setViewMode('list')} className="mt-4 text-indigo-600 hover:underline">Switch to List View</button>
+          <button onClick={() => setViewMode('list')} className="mt-4 text-blue-600 hover:underline">Switch to List View</button>
         </div>
       )}
 
@@ -202,7 +202,7 @@ export function AnalyticAccountsMaster() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
                 <select 
-                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={editingAnalytic.type || AnalyticAccountType.Income}
                   onChange={e => setEditingAnalytic({ ...editingAnalytic, type: e.target.value as AnalyticAccountType })}
                 >
@@ -234,7 +234,7 @@ export function AnalyticAccountsMaster() {
                           const matchingLine = b.lines.find(l => l.analyticAccountId === editingAnalytic.id);
                           return (
                             <tr key={b.id} className="hover:bg-slate-50">
-                              <td className="p-3 font-medium text-indigo-600">
+                              <td className="p-3 font-medium text-blue-600">
                                 <Link to={`/account/analytical-budget?id=${b.id}`}>{b.name}</Link>
                               </td>
                               <td className="p-3">{b.startDate}</td>

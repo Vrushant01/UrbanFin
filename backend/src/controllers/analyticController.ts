@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AnalyticAccount, IAnalyticAccount } from '../models/AnalyticAccount.js';
+import { Budget } from '../models/Budget.js';
 import { AnalyticAccountType } from '../types/index.js';
 import { cache } from '../utils/cache.js';
 
@@ -27,6 +28,37 @@ export const getAnalyticAccounts = async (req: Request, res: Response, next: Nex
 
     cache.set(cacheKey, formatted, 60);
     res.status(200).json(formatted);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getEligibleAnalyticAccounts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { search } = req.query;
+    const filter: any = {};
+    if (search && typeof search === 'string' && search.trim()) {
+      filter.name = { $regex: search.trim(), $options: 'i' };
+    }
+
+    const analytics = await AnalyticAccount.find(filter).sort({ name: 1 });
+    const budgets = await Budget.find({ status: 'Confirmed' });
+
+    const exhaustedAccountIds = new Set<string>();
+
+    for (const budget of budgets) {
+      for (const line of budget.lines || []) {
+        if (line.committedAmount > 0 && line.achievedAmount >= line.committedAmount) {
+          exhaustedAccountIds.add(line.analyticAccountId.toString());
+        }
+      }
+    }
+
+    const eligible = analytics
+      .filter((a) => !exhaustedAccountIds.has(a._id.toString()))
+      .map((a) => a.toJSON());
+
+    res.status(200).json(eligible);
   } catch (error) {
     next(error);
   }

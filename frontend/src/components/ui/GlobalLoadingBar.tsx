@@ -14,7 +14,7 @@ export function GlobalLoadingBar() {
           isLoading ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div className="h-full w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 animate-pulse" />
+        <div className="h-full w-full bg-gradient-to-r from-blue-600 via-slate-600 to-blue-500 animate-pulse" />
         <div className="absolute inset-0 bg-white/30 animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
       </div>
 
@@ -26,7 +26,7 @@ export function GlobalLoadingBar() {
             : 'translate-y-3 opacity-0 scale-95'
         }`}
       >
-        <div className="bg-slate-900/90 text-white backdrop-blur-md px-3.5 py-2 rounded-xl shadow-xl border border-slate-700/80 flex items-center gap-2.5 text-xs font-semibold">
+        <div className="bg-slate-900/90 text-white backdrop-blur-md px-3.5 py-2 rounded-xl shadow-md border border-slate-700/80 flex items-center gap-2.5 text-xs font-semibold">
           <RefreshCw size={14} className="text-blue-400 animate-spin" />
           <span className="text-slate-200">
             Fetching data from database... {activeCount > 1 ? `(${activeCount})` : ''}
@@ -48,8 +48,8 @@ export function DatabaseStatusIndicator() {
     <div
       className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold transition-all border ${
         isLoading
-          ? 'bg-blue-50/90 text-blue-800 border-blue-200 shadow-xs'
-          : 'bg-emerald-50/70 text-emerald-800 border-emerald-200/60 shadow-2xs'
+          ? 'bg-blue-50/90 text-blue-800 border-blue-200 shadow-sm'
+          : 'bg-emerald-50/70 text-emerald-800 border-emerald-200/60 shadow-sm'
       }`}
       title={isLoading ? 'Actively fetching live data from MongoDB Atlas' : 'Connected to MongoDB Atlas'}
     >
